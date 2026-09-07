@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: gis-view
+    runtime: node
+    plan: free
+    buildCommand: npm install --legacy-peer-deps && npm run build && cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 20
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_KML
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: POTHOLE_API_URL
+        fromService:
+          type: web
+          name: pothole-api
+          property: hostport
+      # --- Master Auth Server SSO (Authentication Source 1) ---
+      - key: MASTER_AUTH_URL
+        sync: false # e.g. https://geohub-main.onrender.com
+      - key: SSO_CLIENT_ID
+        value: gis-viewer
+      - key: SSO_CLIENT_SECRET
+        sync: false # must match SSO_SECRET_GIS_VIEWER on the Master Auth Server
+
+  - type: web
+    name: pothole-api
+    runtime: python
+    plan: free
+    rootDir: potholeBackend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: MODEL_WEIGHTS
+        value: swagyyyyy.pt

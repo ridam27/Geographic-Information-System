@@ -1,0 +1,270 @@
+/* Ensure consistent box-sizing */
+* {
+  box-sizing: border-box;
+}
+
+/* Main container */
+.control-panel-container {
+  height: 100vh;
+  display: flex;
+  padding: 8px;
+  gap: 8px;
+  background: #f8f8f8;
+  font-size: 13px;
+  font-family: Arial, sans-serif; /* Added a default font */
+}
+
+/* Map specific - Wider map */
+.map-view-wrapper {
+  flex: 2; /* Giving more flex grow to the map */
+  height: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.map-container-inner {
+  height: 100%;
+  width: 100%;
+}
+
+/* Right-side controls - More compact and potentially side-by-side */
+.controls-wrapper {
+  flex: 1; /* Giving less flex grow to the controls */
+  height: 100%;
+  display: flex;
+  flex-direction: column; /* Default to column for consistency, will change later */
+  background: white;
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden; /* Prevent children from overflowing rounded corners */
+}
+
+.controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.controls-title {
+  margin: 0;
+  font-size: 15px; /* Slightly smaller title */
+}
+
+.video-player {
+  width: 100%;
+  height: 140px; /* Smaller video height */
+  border-radius: 4px;
+  background: #000;
+  flex-shrink: 0;
+}
+
+.video-file-name {
+  margin: 4px 0;
+  color: #666;
+  font-size: 11px; /* Smaller font size */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+/* Scrollable area */
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 6px;
+  margin-top: 8px;
+}
+
+/* Form Elements */
+.input-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.input-grid label {
+  display: block;
+  margin-bottom: 2px; /* Reduced margin */
+  font-size: 12px; /* Smaller label font */
+}
+
+.input-field {
+  width: 100%;
+  padding: 3px; /* Smaller padding */
+  border: 1px solid #ccc;
+  border-radius: 3px; /* Smaller border radius */
+  font-size: 12px; /* Smaller input font */
+}
+
+.export-input-folder {
+  margin-bottom: 6px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  margin-top: 6px;
+  cursor: pointer;
+  font-size: 12px; /* Smaller checkbox label font */
+}
+
+.checkbox-input {
+  margin-right: 4px; /* Smaller margin */
+  transform: scale(0.9); /* Slightly smaller checkbox */
+}
+
+.section-title {
+  margin-top: 8px; /* Reduced margin */
+  margin-bottom: 6px; /* Reduced margin */
+  font-size: 13px; /* Smaller title */
+  border-bottom: 1px solid #eee;
+  padding-bottom: 3px; /* Reduced padding */
+}
+
+/* Buttons */
+.btn {
+  padding: 6px 8px; /* Smaller padding */
+  width: 100%;
+  margin-top: 5px; /* Reduced margin */
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 3px; /* Smaller border radius */
+  font-size: 12px; /* Smaller font size */
+  cursor: pointer;
+  transition: background 0.2s ease; /* Smooth transition */
+}
+
+.btn:hover {
+  background: #0056b3;
+}
+
+.btn-google-map {
+  padding: 4px 8px; /* Even smaller padding */
+  background: #28a745;
+  font-size: 11px; /* Even smaller font size */
+  width: auto;
+  margin-top: 0;
+}
+
+.btn-google-map:hover {
+  background: #218838;
+}
+
+/* Uploads */
+.upload-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px; /* Reduced margin */
+}
+
+.btn-upload-label {
+  padding: 5px 8px; /* Smaller padding */
+  background: #007bff;
+  color: white;
+  border-radius: 3px; /* Smaller border radius */
+  cursor: pointer;
+  font-size: 12px; /* Smaller font size */
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.btn-upload-label:hover {
+  background: #0056b3;
+}
+
+.upload-file-name {
+  font-size: 11px; /* Smaller font size */
+  color: #777;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status Footer */
+.status-footer {
+  margin-top: 6px;
+  font-size: 11px; /* Smaller font size */
+  color: #333;
+  border-top: 1px solid #eee;
+  padding-top: 6px; /* Reduced padding */
+  flex-shrink: 0;
+}
+
+.status-footer p {
+  margin: 3px 0; /* Reduced margin */
+}
+
+/* Media query for larger screens to arrange controls side-by-side */
+@media (min-width: 900px) { /* Adjust breakpoint as needed */
+  .controls-wrapper {
+    flex-direction: row; /* Arrange video and controls side-by-side */
+    gap: 12px; /* Space between video and control sections */
+    padding: 10px; /* Slightly more padding for the wrapper */
+  }
+
+  .controls-wrapper > div:first-child { /* Targets the header/video container */
+    flex: 1; /* Allows video section to take available space */
+    display: flex;
+    flex-direction: column;
+  }
+
+  .controls-wrapper > div:last-child { /* Targets the scroll area */
+    flex: 1.2; /* Allows scroll area to take more space */
+    padding-left: 0; /* No need for padding-right in scroll area if it's main content */
+    overflow-y: auto;
+  }
+
+  .video-player {
+    height: 100%; /* Make video fill available height */
+  }
+
+  .controls-header {
+    margin-bottom: 10px;
+  }
+}
+/* Ensure consistent box-sizing */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Main container */
+.control-panel-container {
+  height: 100vh;
+  display: flex;
+  padding: 20px;
+  gap: 20px;
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+.control-panel-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(88, 86, 214, 0.3) 0%, transparent 50%);
+  pointer-events: none;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}

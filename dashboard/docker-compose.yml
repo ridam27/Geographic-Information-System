@@ -1,0 +1,51 @@
+services:
+  dashboard-redis:
+    image: redis:alpine
+    container_name: gis-dashboard-redis
+    ports:
+      - "6379:6379"
+
+  dashboard-mysql:
+    image: mysql:8.0
+    container_name: gis-dashboard-mysql
+    environment:
+      MYSQL_DATABASE: drone_db
+      MYSQL_USER: phpuser
+      MYSQL_PASSWORD: phpuser
+      MYSQL_ROOT_PASSWORD: gis-dashboard-root
+    ports:
+      - "3307:3306"
+    volumes:
+      - dashboard-mysql-data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pphpuser"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  dashboard-backend:
+    build: .
+    container_name: gis-dashboard-backend
+    depends_on:
+      dashboard-mysql:
+        condition: service_healthy
+      dashboard-redis:
+        condition: service_started
+    environment:
+      DB_HOST: dashboard-mysql
+      DB_NAME: drone_db
+      DB_USER: phpuser
+      DB_PASS: phpuser
+      REDIS_URI: redis://dashboard-redis:6379
+      REDIS_GPS_CHANNEL: gps_updates
+      WS_LISTEN_HOST: 0.0.0.0
+      WS_LISTEN_PORT: 4007
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3007:8080"
+      - "4007:8090"
+
+volumes:
+  dashboard-mysql-data:

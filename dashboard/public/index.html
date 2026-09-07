@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drone Command Center</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0b1120;
+      color: #f8fafc;
+      font-family: "Inter", sans-serif;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      height: 65px;
+      padding: 0 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(180deg,
+          #1b2332 0%,
+          #161d2a 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, .08);
+      box-shadow:
+        0 10px 25px rgba(0, 0, 0, .35);
+    }
+
+    .logo h3 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: .4px;
+    }
+
+    .logo span {
+      display: block;
+      margin-top: 4px;
+      color: #959ca8;
+      font-size: 13px;
+    }
+
+    .right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-radius: 40px;
+      background: #182230;
+      border: 1px solid rgba(77, 142, 247, 0.25);
+      color: #dbeafe;
+      font-size: 13px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      box-shadow:
+        0 0 8px #22c55e,
+        0 0 18px #22c55e;
+      animation: pulse 1.6s infinite;
+    }
+
+    /* Dashboard */
+    .dashboard {
+      height: calc(100vh - 65px);
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 18px;
+      padding: 18px;
+      transition: grid-template-columns .45s ease;
+    }
+
+    .left-panel {
+      background: #151b26;
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 18px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .45);
+      transition:
+        width .45s ease,
+        box-shadow .35s ease,
+        transform .35s ease;
+    }
+
+    .panel-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .right-panel {
+      display: grid;
+      grid-template-rows: 1fr 1fr 1fr;
+      gap: 12px;
+      overflow: hidden;
+      transition:
+        opacity .35s ease,
+        transform .45s ease,
+        width .45s ease;
+    }
+
+    .card {
+      background: #151b26;
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 18px;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+      transition:
+        transform .25s,
+        border-color .25s,
+        box-shadow .25s;
+    }
+
+    .card:hover {
+      border-color: #3b82f6;
+      box-shadow:
+        0 0 0 1px rgba(59, 130, 246, .8),
+        0 0 25px rgba(59, 130, 246, .25);
+    }
+
+    .fullscreen-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 9999;
+      width: 30px;
+      height: 30px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, .75);
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      transition: .25s;
+    }
+
+    .fullscreen-btn:hover {
+      background: #282d38;
+    }
+
+    .dashboard.panel-fullscreen {
+      grid-template-columns: 1fr 0px;
+      gap: 0;
+    }
+
+    .dashboard.panel-fullscreen .right-panel {
+      opacity: 0;
+      transform: translateX(40px);
+      pointer-events: none;
+      width: 0;
+    }
+
+    .dashboard.panel-fullscreen .left-panel {
+      width: 100%;
+      margin-right: 0;
+    }
+
+    .dashboard.panel-fullscreen .panel-container {
+      height: calc(100vh - 65px - 36px);
+    }
+
+    .click-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      cursor: pointer;
+      background: transparent;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    .empty {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      color: #64748b;
+      font-size: 55px;
+    }
+
+    .empty span {
+      margin-top: 10px;
+      font-size: 16px;
+    }
+
+    .panel-item {
+      width: 100%;
+      height: 100%;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        transform: scale(1.4);
+        opacity: .5;
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="logo">
+      <h3>Drone Command Center</h3>
+      <span>EverythingYouPost • Live Monitoring Dashboard</span>
+    </div>
+    <div class="right">
+      <div class="status">
+        <div class="dot"></div>
+        <span>Live System</span>
+      </div>
+    </div>
+  </div>
+  <div class="dashboard">
+    <div class="left-panel">
+      <button id="fullscreenBtn" class="fullscreen-btn" title="Fullscreen">
+        ⛶
+      </button>
+      <div class="panel-container">
+        <div id="mapPanel" class="card panel-item">
+          <div id="map"></div>
+        </div>
+      </div>
+    </div>
+    <div class="right-panel">
+      <div id="goproPanel" class="card empty panel-item">
+        <div class="click-overlay"></div>
+        <iframe src="/stream/"></iframe>
+      </div>
+      <div id="aiPanel" class="card empty panel-item">
+        <div class="click-overlay"></div>
+        <iframe src="/ai/"></iframe>
+      </div>
+      <div id="telemetryPanel" class="card empty panel-item">
+        <span>Telemetry / Future Panel</span>
+      </div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([21.1458, 79.0882], 13);
+    const leftPanel = document.querySelector(".left-panel");
+    L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+
+    let marker = null;
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function renderGps(gps) {
+      const lat = parseFloat(gps.latitude);
+      const lng = parseFloat(gps.longitude);
+
+      if (marker === null) {
+        marker = L.marker([lat, lng]).addTo(map);
+        map.setView([lat, lng], 18);
+      } else {
+        marker.setLatLng([lat, lng]);
+        map.panTo([lat, lng]);
+      }
+
+      marker.bindPopup(
+        "<b>Drone : " + escapeHtml(gps.drone_code) + "</b><br>" + "Latitude : " + lat + "<br>" + "Longitude : " + lng + "<br>" + "Altitude : " + gps.altitude + " m<br>" + "Speed : " + gps.speed + " km/h<br>" + "Updated : " + escapeHtml(gps.timestamp)
+      );
+    }
+
+    // Initial paint via REST, before the socket has delivered anything.
+    async function loadInitialGPS() {
+      try {
+        const response = await fetch("api/get_gps.php");
+        const json = await response.json();
+        if (!json.status || json.count === 0)
+          return;
+        renderGps(json.data[0]);
+      } catch (e) {
+        console.log(e);
+      }
+    }
+
+    // Live updates pushed by ws_server.php (relaying Redis "gps_updates").
+    function connectGpsSocket() {
+      const protocol = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${protocol}://${location.hostname}:8090`);
+
+      ws.onmessage = (event) => {
+        try {
+          renderGps(JSON.parse(event.data));
+        } catch (e) {
+          console.log(e);
+        }
+      };
+
+      ws.onclose = () => setTimeout(connectGpsSocket, 2000);
+      ws.onerror = () => ws.close();
+    }
+
+    loadInitialGPS();
+    connectGpsSocket();
+
+    // =====================
+    // Panel Swap Function
+    // =====================
+
+    const panelContainer = document.querySelector(".panel-container");
+
+    function swapPanel(selectedPanel) {
+
+      const leftContent = panelContainer.firstElementChild;
+
+      if (leftContent === selectedPanel) return;
+
+      const parent = selectedPanel.parentNode;
+      const nextSibling = selectedPanel.nextElementSibling;
+
+      // LEFT PANEL
+      panelContainer.replaceChild(selectedPanel, leftContent);
+
+      // RIGHT PANEL
+      if (nextSibling) {
+        parent.insertBefore(leftContent, nextSibling);
+      } else {
+        parent.appendChild(leftContent);
+      }
+
+      // Leaflet resize only when map exists
+      if (selectedPanel.querySelector("#map") || leftContent.querySelector("#map")) {
+        setTimeout(() => map.invalidateSize(), 200);
+      }
+    }
+
+    // =====================
+    // Fullscreen Panel Function
+    // =====================
+
+    const dashboard = document.querySelector(".dashboard");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+
+    fullscreenBtn.addEventListener("click", function (e) {
+
+      e.stopPropagation();
+
+      dashboard.classList.toggle("panel-fullscreen");
+
+      fullscreenBtn.innerHTML =
+        dashboard.classList.contains("panel-fullscreen")
+          ? "🗗"
+          : "⛶";
+
+      setTimeout(() => {
+        if (document.getElementById("map")) {
+          map.invalidateSize();
+        }
+      }, 250);
+
+    });
+
+    // =====================
+    // Click Events
+    // =====================
+
+    document.getElementById("mapPanel").onclick = function () {
+      swapPanel(this);
+    };
+
+    document.querySelector("#goproPanel .click-overlay")
+      .addEventListener("click", function (e) {
+
+        e.stopPropagation();
+
+        swapPanel(document.getElementById("goproPanel"));
+
+      });
+
+    document.querySelector("#aiPanel .click-overlay")
+      .addEventListener("click", function (e) {
+
+        e.stopPropagation();
+
+        swapPanel(document.getElementById("aiPanel"));
+
+      });
+
+    document.getElementById("telemetryPanel").onclick = function () {
+      swapPanel(this);
+    };
+  </script>
+</body>
+
+</html>

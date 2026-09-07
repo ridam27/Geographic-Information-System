@@ -1,0 +1,125 @@
+.verify-otp-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  padding: 24px;
+}
+
+.verify-otp-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  padding: 40px 32px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+}
+
+.verify-otp-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #eaf2ff;
+  color: #2975cc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.verify-otp-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.verify-otp-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.verify-otp-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.otp-input {
+  width: 100%;
+  font-size: 28px;
+  letter-spacing: 12px;
+  text-align: center;
+  padding: 14px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.otp-input:focus {
+  border-color: #2975cc;
+  box-shadow: 0 0 0 3px rgba(41, 117, 204, 0.15);
+}
+
+.submit-button {
+  width: 100%;
+  padding: 12px;
+  background: #2975cc;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.resend-button {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: #2975cc;
+  border: 1px solid #2975cc;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.resend-button:disabled {
+  color: #9ca3af;
+  border-color: #d1d5db;
+  cursor: not-allowed;
+}
+
+.back-link {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.form-error {
+  color: #dc2626;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.form-success {
+  color: #16a34a;
+  font-size: 13px;
+  margin-bottom: 12px;
+}

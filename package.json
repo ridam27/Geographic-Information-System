@@ -1,0 +1,14 @@
+{
+  "name": "geographic-information-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Root installer for all GIS sub-projects. `npm i` here installs every frontend, backend, and the Construction Python backend in one shot.",
+  "scripts": {
+    "postinstall": "node scripts/install-all.js",
+    "install-all": "node scripts/install-all.js",
+    "start": "npm --prefix \"./main application\" run start"
+  },
+  "dependencies": {
+    "redis": "^6.2.1"
+  }
+}

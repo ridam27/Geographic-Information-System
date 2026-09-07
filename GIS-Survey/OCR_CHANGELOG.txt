@@ -1,0 +1,57 @@
+OCR Automation — Changelog and Summary
+=====================================
+
+Scope: Summary of OCR automation work from project start to current state.
+
+What we implemented (chronological summary):
+- Added client-side PDF/image preprocessing and OCR:
+  - Tools: `pdfjs-dist` (PDF text & rendering), `Tesseract.js` (printed OCR), canvas-based preprocessing (scale, contrast, threshold, deskew).
+  - File: survey-frontend/src/Components/MapAndForms/JavaScript/documentAutofillHelpers.js
+
+- Implemented per-field cropping + OCR pipeline:
+  - Detect label text, crop region for value, run Tesseract on cropped area for higher accuracy.
+  - Functions: `cropAndOcrFields`, `cropCanvas`, `documentFieldDefinitionsForPdf`.
+
+- Backend HTR integration and hardening:
+  - HTR provider: Hugging Face `microsoft/trocr-base-handwritten` via `HF_API_KEY` (fallback when local OCR insufficient).
+  - Hardened `/api/ocr/recognize` to degrade gracefully instead of returning 502 when provider fails.
+  - File: survey-backend/routes/ocrRoutes.js
+
+- Added OpenAI-based cleaning endpoint (server-side):
+  - Route: `POST /api/ocr/clean` -> calls OpenAI Chat Completions to convert noisy OCR text into strict JSON.
+  - File: survey-backend/routes/openaiRoutes.js
+  - Notes: requires `OPENAI_API_KEY` in `survey-backend/.env` (do NOT commit).
+
+- Security & reliability improvements:
+  - Added a simple in-memory rate limiter to the OpenAI route (20 req/hour per IP).
+  - Added PII redaction before logging (redacts long digit sequences and emails).
+
+- Server wiring:
+  - Mounted OpenAI route in server: survey-backend/server.js
+
+Files changed (key edits):
+- survey-frontend/src/Components/MapAndForms/JavaScript/documentAutofillHelpers.js
+- survey-backend/routes/ocrRoutes.js
+- survey-backend/routes/openaiRoutes.js
+- survey-backend/server.js
+
+Tools & libraries used:
+- Frontend: React (create-react-app), Tesseract.js, pdfjs-dist, browser canvas API
+- Backend: Node.js, Express, node-fetch
+- External services: Hugging Face HTR model (optional), OpenAI Chat Completions (optional)
+
+Current limitations & assumptions:
+- Per-field cropping assumes label is present and value is near/right of label; multi-column or unusual layouts may require tuning.
+- OpenAI usage incurs costs and must be protected (rate-limiting, do not log raw PII).
+- `OPENAI_API_KEY` must be added manually to `survey-backend/.env`.
+
+Next recommended steps:
+- Place `OPENAI_API_KEY` into `survey-backend/.env` (local only).
+- Restart backend and test endpoints:
+  - `/api/ocr/recognize` (existing HTR endpoint)
+  - `/api/ocr/clean` (OpenAI cleaning)
+- Expand `documentFieldDefinitionsForPdf()` to include additional fields: `zone`, `newPropertyNo`, `oldPropertyNo`, `usageType`, `constructionType`, `rate`.
+- Consider replacing in-memory rate limiter with `express-rate-limit` + Redis for production.
+
+Contact / Notes:
+- Do not commit secrets. This changelog is intentionally added to `.gitignore`.

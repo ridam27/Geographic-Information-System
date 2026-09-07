@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS drone_gps_logs (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  drone_code VARCHAR(100) NOT NULL,
+  latitude DECIMAL(10,7) NOT NULL,
+  longitude DECIMAL(10,7) NOT NULL,
+  altitude DECIMAL(10,2) NOT NULL DEFAULT 0,
+  speed DECIMAL(10,2) NOT NULL DEFAULT 0,
+  timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  INDEX idx_drone_code_id (drone_code, id)
+);

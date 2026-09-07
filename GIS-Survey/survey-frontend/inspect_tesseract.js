@@ -1,0 +1,1 @@
+const { createWorker } = require('tesseract.js'); console.log('createWorker type', typeof createWorker); console.log('createWorker length', createWorker.length); try { const worker = createWorker(); console.log('worker created', !!worker); } catch (e) { console.error('createWorker failed', e && e.message); }

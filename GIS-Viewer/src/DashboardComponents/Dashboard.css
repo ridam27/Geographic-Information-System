@@ -1,0 +1,289 @@
+/* Sidebar toggle button container */
+.sidebar-toggle-container {
+  display: flex;
+  align-items: center;
+  position: fixed;
+  top: 10px; 
+  left: 20px; 
+  z-index: 1300;
+  transition: transform 0.3s ease-in-out; 
+}
+
+/* Sidebar toggle button */
+.sidebar-toggle-button {
+  background-color: #e0e0e0 !important; 
+  color: #37474f; 
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  border-radius: 50%;
+  padding: 12px;
+  transition: all 0.3s ease-in-out;
+}
+
+.sidebar-toggle-button:hover {
+  background-color: #f5f5f5; 
+  color: #546e7a; 
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  transform: rotate(180deg);
+}
+
+/* Sidebar drawer */
+.sidebar-drawer {
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+}
+
+/* Sidebar content */
+.sidebar-content {
+  width: 250px;
+  height: 100%;
+  background-color: #e4f0ff;
+  color: #263238; 
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px 15px;
+  box-sizing: border-box;
+  animation: slideIn 0.4s ease-out; 
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Sidebar title */
+.sidebar-title {
+  margin-top: -5px !important;
+  margin-left: 50px !important;
+  color: #263238;
+  font-weight: 600 !important;
+  margin-bottom: 20px;
+  text-align: center;
+  animation: fadeIn 0.8s ease-out;
+}
+
+/* Sidebar options list */
+.sidebar-options-list {
+  margin-top: 20px;
+  width: 100%;
+  opacity: 0;
+  animation: fadeInUp 0.5s ease-out 0.2s forwards;
+}
+
+/* Sidebar option item */
+.sidebar-option-item {
+  color: #546e7a; 
+  padding: 12px 15px;
+  border-radius: 8px; 
+  transition: all 0.2s ease-in-out; 
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.sidebar-option-item:hover {
+  background-color: #eceff1;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+  padding-left: 20px; 
+  transform: scale(1.02); 
+}
+
+.sidebar-option-item:active { 
+  transform: scale(0.98); 
+  background-color: #d8d8d8; 
+}
+
+.sidebar-option-item.selected {
+  background-color: #b0bec5; 
+  color: #263238; 
+  font-weight: 600;
+}
+
+.sidebar-option-item.selected:hover {
+  background-color: #cfd8dc;
+  color: #263238;
+}
+
+/* Sidebar option icon */
+.sidebar-option-icon {
+  color: inherit;
+  min-width: 40px;
+}
+
+/* Sidebar divider */
+.sidebar-divider {
+  background-color: #e0e0e0;
+  margin-top: 20px;
+}
+
+/* Floating icons container */
+.floating-icons-container {
+  position: fixed;
+  top: 50%;
+  left: -40px; /* Start offscreen */
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1200;
+  background-color: rgba(236, 239, 241, 0.9);
+  border-radius: 0 12px 12px 0;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.15);
+  padding: 15px 5px;
+  transition: all 0.3s ease-in-out;
+}
+
+/* Display floating icons on hover */
+.floating-icons-container:hover {
+  left: 0;
+  transform: translateY(-50%);
+  background-color: rgba(236, 239, 241, 1);
+}
+
+/* Add hover trigger area */
+.floating-icons-trigger {
+  position: fixed;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 150px;
+  z-index: 1199;
+}
+
+.floating-icons-trigger:hover + .floating-icons-container,
+.floating-icons-container:hover {
+  left: 0;
+}
+
+/* Floating icon button */
+.floating-icon-button {
+  background-color: transparent;
+  color: #546e7a;
+  margin: 5px 0;
+  padding: 10px;
+  border-radius: 50%;
+  transition: all 0.3s ease-in-out;
+  position: relative;
+}
+
+.floating-icon-button:hover {
+  background-color: #cfd8dc;
+  color: #263238;
+  transform: scale(1.15);
+}
+
+.floating-icon-button.selected {
+  background-color: #b0bec5;
+  color: #263238;
+}
+
+.floating-icon-button.selected:after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  background-color: #546e7a;
+  border-radius: 2px;
+}
+
+/* Main content area */
+.main-content {
+  padding: 0;
+  transition: margin-left 0.3s ease-in-out;
+  overflow: hidden;
+  animation: fadeInUp 0.8s ease-out; 
+}
+
+/* Welcome image animation */
+.welcome-image {
+  width: 100vh;
+  height: auto;
+  max-width: 100vh;
+  margin: 20px auto;
+  display: block;
+  border-radius: 8px;
+  transform: scale(0.9);
+  opacity: 0;
+  animation: fadeInZoom 0.8s ease-out forwards;
+}
+
+/* Keyframe animations */
+@keyframes slideIn {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  0% {
+    transform: translateX(-50px) translateY(-50%);
+    opacity: 0; 
+  }
+  30% {
+    opacity: 0.5; 
+  }
+  100% {
+    transform: translateX(0) translateY(-50%);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInZoom {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Add a pulse animation for new items */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(84, 110, 122, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(84, 110, 122, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(84, 110, 122, 0);
+  }
+}
+
+/* For smaller screens */
+@media (max-width: 600px) {
+  .floating-icons-container {
+    padding: 10px 2px;
+  }
+  
+  .floating-icon-button {
+    padding: 8px;
+    margin: 3px 0;
+  }
+}

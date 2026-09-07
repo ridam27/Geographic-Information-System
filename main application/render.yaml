@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: geohub-main
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build && cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 20
+      - key: MASTER_MONGO_URI
+        sync: false
+      - key: MASTER_SESSION_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false # this service's own deployed origin, e.g. https://geohub-main.onrender.com
+      - key: SSO_SECRET_GIS_3D
+        sync: false
+      - key: SSO_SECRET_GIS_CONSTRUCTION
+        sync: false
+      - key: SSO_SECRET_GIS_SURVEY
+        sync: false
+      - key: SSO_SECRET_GIS_VIEWER
+        sync: false
+      - key: SSO_SECRET_GIS_WILDLIFE
+        sync: false
+      - key: GIS_3D_CALLBACK_URL
+        sync: false
+      - key: GIS_CONSTRUCTION_CALLBACK_URL
+        sync: false
+      - key: GIS_SURVEY_CALLBACK_URL
+        sync: false
+      - key: GIS_VIEWER_CALLBACK_URL
+        sync: false
+      - key: GIS_WILDLIFE_CALLBACK_URL
+        sync: false

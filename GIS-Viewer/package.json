@@ -1,0 +1,71 @@
+{
+  "name": "db",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^6.3.0",
+    "@mui/material": "^6.3.0",
+    "@tmcw/togeojson": "^7.0.0",
+    "axios": "^1.7.9",
+    "bcryptjs": "^3.0.0",
+    "connect-mongo": "^5.1.0",
+    "connect-mongodb-session": "^5.0.0",
+    "cra-template": "1.2.0",
+    "express-session": "^1.18.1",
+    "georaster": "^1.6.0",
+    "georaster-layer-for-leaflet": "^3.10.0",
+    "jsonwebtoken": "^9.0.2",
+    "jszip": "^3.10.1",
+    "leaflet": "^1.9.4",
+    "leaflet-defaulticon-compatibility": "^0.1.2",
+    "leaflet-draw": "^1.0.4",
+    "leaflet-omnivore": "^0.3.4",
+    "multer": "^1.4.5-lts.1",
+    "nodemon": "^3.1.9",
+    "webpack": "^5.88.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1",
+    "react-leaflet-draw": "^0.20.6",
+    "react-router-dom": "^7.1.1",
+    "react-scripts": "5.0.1",
+    "react-top-loading-bar": "^3.0.2",
+    "shpjs": "^6.1.0",
+    "tokml": "^0.4.0",
+    "web-vitals": "^4.2.4"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "7.21.0-placeholder-for-preset-env.2",
+    "ajv": "^8.20.0",
+    "ajv-keywords": "^5.1.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+01_original.png
+02_masked.png
+03_edges.png
+04_walls.png
+05_combined.png
+

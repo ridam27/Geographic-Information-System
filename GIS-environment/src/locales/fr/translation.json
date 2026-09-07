@@ -1,0 +1,13 @@
+{
+  "settings": {
+    "title": "Préférences de la plateforme",
+    "temperatureUnit": "Unité de température",
+    "windSpeedUnit": "Unité de vitesse du vent",
+    "pressureUnit": "Unité de pression barométrique",
+    "distanceUnit": "Unité de distance",
+    "themeMode": "Mode de thème",
+    "language": "Langue",
+    "close": "Fermer",
+    "saveAndClose": "Enregistrer et fermer"
+  }
+}

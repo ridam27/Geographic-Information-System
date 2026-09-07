@@ -1,0 +1,13 @@
+{
+  "settings": {
+    "title": "प्लेटफ़ॉर्म प्राथमिकताएँ",
+    "temperatureUnit": "तापमान इकाई",
+    "windSpeedUnit": "हवा की गति इकाई",
+    "pressureUnit": "दबाव इकाई",
+    "distanceUnit": "दूरी इकाई",
+    "themeMode": "थीम मोड",
+    "language": "भाषा",
+    "close": "बंद करें",
+    "saveAndClose": "सहेजें और बंद करें"
+  }
+}

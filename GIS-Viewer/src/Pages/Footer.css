@@ -1,0 +1,144 @@
+/* General Footer Styling */
+footer {
+    background-color: #3b5998; /* Soft blue color */
+    color: white;
+    padding: 40px 0;
+    font-family: 'Arial', sans-serif;
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+  }
+  
+  /* Section Header */
+  footer .section-header h4 {
+    font-size: 32px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+    color: #f8f9fa;
+    animation: fadeInDown 1.5s ease;
+    position: relative;
+  }
+  
+  /* Contact Info Styling */
+  footer .contact-info {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    margin-top: 20px;
+    animation: fadeIn 2s ease;
+  }
+  
+  footer .contact-info div {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    width: 300px;
+    text-align: center;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+    margin: 10px;
+  }
+  
+  footer .contact-info div:hover {
+    transform: translateY(-10px);
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  footer .contact-info i {
+    font-size: 36px;
+    color: #ffdd57;
+    margin-bottom: 15px;
+    animation: bounce 2s infinite;
+  }
+  
+  footer .contact-info h3 {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffdd57;
+    margin-bottom: 10px;
+  }
+  
+  footer .contact-info address,
+  footer .contact-info p {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #f8f9fa;
+  }
+  
+  footer .contact-info a {
+    color: #17a2b8;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  
+  footer .contact-info a:hover {
+    text-decoration: underline;
+  }
+  
+  /* Background Animation */
+  footer::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent);
+    animation: rotateBackground 8s linear infinite;
+    z-index: -1;
+  }
+  
+  /* Keyframes */
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeInDown {
+    0% {
+      opacity: 0;
+      transform: translateY(-30px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes bounce {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  
+  @keyframes rotateBackground {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    footer .contact-info {
+      flex-direction: column;
+      align-items: center;
+    }
+  
+    footer .contact-info div {
+      width: 90%;
+    }
+  }
+  

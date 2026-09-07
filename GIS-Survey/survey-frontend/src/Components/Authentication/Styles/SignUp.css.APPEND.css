@@ -1,0 +1,6 @@
+/* --- Append to the end of your existing SignUp.css --- */
+.password-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}

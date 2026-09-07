@@ -1,0 +1,105 @@
+/* Hero Section Styling */
+.hero-container {
+  background-image: url(https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D);
+  background-size: cover;
+  background-position: center;
+  height: 100vh;
+  color: white;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 20px;
+  animation: moveBackground 15s infinite linear; /* Apply animation */
+}
+
+/* Keyframe to move the background image */
+@keyframes moveBackground {
+  0% {
+    background-position: center;
+  }
+  50% {
+    background-position: left top; /* Moves image to the left */
+  }
+  100% {
+    background-position: center;
+  }
+}
+
+.hero-container h1 {
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.hero-container p {
+  font-size: 1.5rem;
+  margin-bottom: 30px;
+}
+
+.hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.hero-buttons .btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 30px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.hero-buttons .btn-warning {
+  background-color: #ffc107;
+  color: black;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 12px 25px;
+  border-radius: 30px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: 2px solid #ffc107;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease-in-out;
+  cursor: pointer;
+  display: inline-block;
+  text-align: center;
+  line-height: 1.5;
+  width: auto;
+  min-width: 150px;
+}
+
+.hero-buttons .btn-warning:hover {
+  background-color: #e0a800;
+  color: white;
+  border-color: #e0a800;
+  transform: translateY(-4px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.hero-buttons .btn-warning:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+
+.hero-buttons .btn-login {
+  background-color: #007bff;
+  color: white;
+}
+
+.hero-buttons .btn-login:hover {
+  background-color: #0056b3;
+}
+
+.hero-buttons .btn-signup {
+  background-color: #28a745;
+  color: white;
+}
+
+.hero-buttons .btn-signup:hover {
+  background-color: #218838;
+}

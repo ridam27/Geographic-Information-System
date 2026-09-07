@@ -1,0 +1,14 @@
+node_modules/
+build/
+backend/node_modules/
+backend/uploads/
+potholeBackend/uploads/
+potholeBackend/processed/
+potholeBackend/__pycache__/
+src.rar
+.env
+.env.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+

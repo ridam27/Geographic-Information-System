@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+
+  backend:
+    build: ./survey-backend
+    container_name: survey_backend
+    ports:
+      - "5001:5001"
+    env_file:
+      - ./survey-backend/.env
+    networks:
+      - survey_network
+
+  frontend:
+    build: ./survey-frontend
+    container_name: survey_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - survey_network
+
+networks:
+  survey_network:
+    driver: bridge

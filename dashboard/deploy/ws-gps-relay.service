@@ -1,0 +1,16 @@
+[Unit]
+Description=Drone dashboard GPS WebSocket relay (Redis pub/sub -> browsers)
+After=network.target redis-server.service
+Requires=redis-server.service
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/dashboard
+ExecStart=/usr/bin/php /var/www/dashboard/bin/ws_server.php
+EnvironmentFile=/var/www/dashboard/.env
+Restart=on-failure
+RestartSec=2
+User=www-data
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+{
+  "settings": {
+    "title": "Platform Preferences",
+    "temperatureUnit": "Temperature Unit",
+    "windSpeedUnit": "Wind Speed Unit",
+    "pressureUnit": "Barometric Pressure Unit",
+    "distanceUnit": "Distance Unit",
+    "themeMode": "Theme Mode",
+    "language": "Language",
+    "close": "Close",
+    "saveAndClose": "Save & Close"
+  }
+}

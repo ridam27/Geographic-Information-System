@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Rowdies:wght@300;400;700&display=swap');
+.welcome-container {
+  position: relative;
+  height: 100vh;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.welcome-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url('https://images.unsplash.com/photo-1643330683233-ff2ac89b002c?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+  background-size: cover;
+  background-position: center;
+  filter: blur(1px);
+  z-index: -1;
+}
+
+@keyframes fadeSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.welcome-text {
+  font-size: 4em;
+  /* font-weight: 1000; */
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-family: 'Sora', sans-serif;
+font-weight: 900;
+
+  color: #ffffff;
+  text-shadow: 4px 4px 10px rgba(0, 0, 0, 1);
+
+  text-align: center;
+  margin: 20px;
+  padding: 10px;
+
+  animation: fadeSlideIn 1s ease-out forwards;
+  opacity: 0; 
+  transition: all 0.3s ease-in-out;
+}
+
+.welcome-text:hover {
+  transform: scale(1.08);
+  text-shadow: 6px 6px 12px rgba(0, 0, 0, 0.9);
+  letter-spacing: 2px;
+}
+
+
+
+.discover-button {
+  /* Add styles for button (color, font, arrow) */
+  background-color: #ADEFD1FF;  
+  color: #00203FFF; /* Dark blue text */
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  text-decoration: none; /* Remove underline if it's a link */
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Add arrow using :after pseudo-element or an icon */
+}

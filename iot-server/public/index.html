@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Board Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0e1e17;
+    --bg-deep: #0a1610;
+    --panel: #14271d;
+    --panel-raised: #1a2f23;
+    --trace: #2f5540;
+    --trace-bright: #4d8a68;
+    --copper: #c67c45;
+    --copper-bright: #e8944f;
+    --silk: #eae7d6;
+    --silk-dim: #a9b8ac;
+    --text-dim: #6f9080;
+    --led-on: #57ff9e;
+    --led-off: #3a4a41;
+    --red: #ff5d5d;
+    --amber: #f0b429;
+    --blue: #5fb8e8;
+    --radius: 3px;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(76,138,104,0.08), transparent 60%),
+      var(--bg);
+    background-image:
+      linear-gradient(rgba(76,138,104,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(76,138,104,0.05) 1px, transparent 1px),
+      radial-gradient(ellipse at 20% 0%, rgba(76,138,104,0.08), transparent 60%);
+    background-size: 24px 24px, 24px 24px, 100% 100%;
+    color: var(--silk);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    display:flex; flex-direction:column;
+  }
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 22px; background: var(--bg-deep); border-bottom: 1px solid var(--trace);
+    position: sticky; top:0; z-index:20;
+  }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand-chip{
+    width:34px; height:34px; border-radius:6px;
+    background: linear-gradient(160deg, var(--panel-raised), var(--panel));
+    border:1px solid var(--trace-bright); display:flex; align-items:center; justify-content:center;
+  }
+  .brand-chip svg{ width:18px; height:18px; }
+  .brand h1{ font-family: var(--font-display); font-size: 17px; letter-spacing: 0.04em; font-weight: 600; color: var(--silk); }
+  .brand small{ display:block; font-size:10px; color:var(--text-dim); letter-spacing:0.14em; margin-top:2px; }
+
+  .conn-badge{
+    display:flex; align-items:center; gap:9px; font-size:12px; letter-spacing:0.05em;
+    padding:7px 14px; background: var(--panel); border:1px solid var(--trace); border-radius: 20px;
+  }
+  .dot{ width:9px; height:9px; border-radius:50%; background: var(--led-off); transition: background .3s, box-shadow .3s; flex-shrink:0; }
+  .dot.on{ background: var(--led-on); box-shadow: 0 0 8px 1px rgba(87,255,158,0.7); }
+  .dot.on.pulse{ animation: blip 2s ease-in-out infinite; }
+  @keyframes blip{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
+
+  .shell{ display:flex; flex:1; min-height:0; }
+  nav.rail{ width: 220px; flex-shrink:0; background: var(--bg-deep); border-right: 1px solid var(--trace); padding: 18px 0; position: relative; }
+  .rail-track{ position:absolute; left:29px; top:18px; bottom:18px; width:1px; background: repeating-linear-gradient(to bottom, var(--trace) 0 4px, transparent 4px 8px); }
+  .nav-item{
+    position:relative; display:flex; align-items:center; gap:13px; padding: 12px 18px 12px 20px;
+    color: var(--silk-dim); font-size: 13px; letter-spacing:0.03em; cursor:pointer; border:none;
+    background:none; width:100%; text-align:left; font-family: var(--font-mono);
+  }
+  .nav-item .pad{
+    width:17px; height:17px; border-radius:50%; background: var(--panel); border:1px solid var(--trace);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; z-index:1; transition: border-color .2s, background .2s;
+  }
+  .nav-item .pad svg{ width:9px; height:9px; opacity:0.75; }
+  .nav-item:hover{ color: var(--silk); }
+  .nav-item:hover .pad{ border-color: var(--trace-bright); }
+  .nav-item.active{ color: var(--copper-bright); }
+  .nav-item.active .pad{ background: var(--copper); border-color: var(--copper-bright); box-shadow: 0 0 10px 1px rgba(232,148,79,0.45); }
+  .nav-item.active::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background: var(--copper-bright); }
+
+  main{ flex:1; padding: 26px 30px 60px; overflow-y:auto; }
+  .crumb{ display:flex; align-items:center; gap:8px; color: var(--text-dim); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; margin-bottom: 6px; }
+  .crumb .trace-line{ width:26px; height:1px; background: var(--trace-bright); }
+  .view-title{ font-family: var(--font-display); font-weight:600; font-size:24px; color: var(--silk); margin-bottom: 22px; }
+  .view{ display:none; }
+  .view.active{ display:block; animation: rise .35s ease; }
+  @keyframes rise{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap:16px; }
+  .card{ background: var(--panel); border: 1px solid var(--trace); border-radius: var(--radius); padding: 18px; position:relative; overflow:hidden; }
+  .card::after{ content:""; position:absolute; top:0; right:0; width:34px; height:34px; background: linear-gradient(135deg, transparent 50%, var(--trace) 50%); opacity:0.4; }
+  .card h3{ font-family:var(--font-display); font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--silk-dim); display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .card h3 svg{ width:15px; height:15px; color:var(--copper-bright); flex-shrink:0; }
+
+  .readout{ font-family: var(--font-mono); font-size: 30px; font-weight:600; color: var(--silk); letter-spacing: 0.02em; }
+  .readout.small{ font-size:20px; }
+  .unit{ font-size:13px; color:var(--text-dim); margin-left:4px; }
+  .subtext{ font-size:11px; color:var(--text-dim); margin-top:6px; letter-spacing:0.03em; }
+
+  .status-pill{ display:inline-flex; align-items:center; gap:7px; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; padding:5px 10px; border-radius:20px; background: var(--bg-deep); border:1px solid var(--trace); margin-top:4px; }
+  .status-pill.active{ border-color: var(--red); color:var(--red); }
+  .status-pill.calm{ border-color: var(--trace-bright); color: var(--led-on); }
+  .status-pill.moist{ border-color: var(--amber); color: var(--amber); }
+  .status-pill.running{ border-color: var(--blue); color: var(--blue); }
+
+  .btn{ font-family: var(--font-mono); font-size:12px; letter-spacing:0.04em; padding: 9px 16px; border-radius: var(--radius); border: 1px solid var(--trace-bright); background: var(--panel-raised); color: var(--silk); cursor:pointer; transition: all .15s; }
+  .btn:hover{ border-color: var(--copper-bright); color: var(--copper-bright); }
+  .btn:focus-visible{ outline: 2px solid var(--copper-bright); outline-offset:2px; }
+  .btn.primary{ background: var(--copper); border-color: var(--copper); color: var(--bg-deep); font-weight:600; }
+  .btn.primary:hover{ background: var(--copper-bright); border-color: var(--copper-bright); color:var(--bg-deep); }
+  .btn.ghost{ background:transparent; }
+  .btn.danger:hover{ border-color: var(--red); color: var(--red); }
+
+  .led-row{ display:flex; align-items:center; justify-content:space-between; padding: 14px 16px; background: var(--bg-deep); border:1px solid var(--trace); border-radius: var(--radius); margin-bottom:10px; }
+  .led-info{ display:flex; align-items:center; gap:12px; }
+  .bulb{ width:22px; height:22px; border-radius:50%; background: var(--led-off); border: 2px solid var(--trace-bright); transition: all .2s; }
+  .bulb.lit{ background: radial-gradient(circle at 35% 30%, #fff8e6, var(--amber) 40%, var(--copper) 100%); border-color: var(--copper-bright); box-shadow: 0 0 16px 3px rgba(240,180,41,0.55); }
+  .led-label{ font-size:13px; color:var(--silk); }
+  .led-sub{ font-size:10px; color:var(--text-dim); letter-spacing:0.08em; }
+  .toggle-group{ display:flex; gap:6px; }
+  .toggle-btn{ font-family:var(--font-mono); font-size:11px; padding:6px 12px; border-radius:20px; border:1px solid var(--trace); background:transparent; color:var(--text-dim); cursor:pointer; }
+  .toggle-btn.on-btn.selected{ background: rgba(87,255,158,0.12); border-color: var(--led-on); color: var(--led-on); }
+  .toggle-btn.off-btn.selected{ background: rgba(255,93,93,0.1); border-color: var(--red); color: var(--red); }
+  .toggle-btn:focus-visible{ outline: 2px solid var(--copper-bright); outline-offset:2px; }
+
+  .servo-wrap{ display:flex; gap:30px; align-items:center; flex-wrap:wrap; }
+  .dial{ position:relative; width:160px; height:160px; flex-shrink:0; }
+  .dial svg{ width:100%; height:100%; }
+  .dial-readout{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .dial-readout .num{ font-size:26px; font-weight:600; color:var(--silk); }
+  .dial-readout .lbl{ font-size:9px; letter-spacing:0.14em; color:var(--text-dim); }
+  .slider-col{ flex:1; min-width:220px; }
+  input[type=range]{ -webkit-appearance:none; width:100%; height:4px; border-radius:2px; background: var(--trace); outline:none; margin: 16px 0 6px; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background: var(--copper-bright); border: 2px solid var(--bg-deep); box-shadow: 0 0 0 1px var(--copper-bright); cursor:pointer; }
+  .preset-row{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+
+  .bar-track{ width:100%; height:10px; background:var(--bg-deep); border:1px solid var(--trace); border-radius:6px; overflow:hidden; margin-top:14px; }
+  .bar-fill{ height:100%; background: linear-gradient(90deg, var(--amber), var(--led-on)); width:0%; transition: width .5s; }
+
+  .vu-wrap{ display:flex; gap:28px; align-items:center; flex-wrap:wrap; }
+  .vu-meter{ width:220px; flex-shrink:0; }
+  .vu-meter svg{ width:100%; height:auto; overflow:visible; }
+  .vu-scale-label{ display:flex; justify-content:space-between; font-size:10px; letter-spacing:0.1em; color:var(--text-dim); margin-top:2px; padding:0 6px; }
+  #soundNeedleGroup{ transform-origin: 100px 108px; transition: transform .35s cubic-bezier(.34,1.4,.4,1); }
+  #soundNeedleGroup.wobble{ animation: needle-wobble 0.42s ease-in-out infinite alternate; }
+  @keyframes needle-wobble{ from{ transform: rotate(-3deg); } to{ transform: rotate(3deg); } }
+  .vu-readout{ text-align:center; margin-top:6px; }
+  .vu-readout .num{ font-family:var(--font-display); font-size:15px; font-weight:600; letter-spacing:0.08em; }
+  .vu-readout .num.active{ color: var(--red); }
+  .vu-readout .num.calm{ color: var(--led-on); }
+
+  /* Water tank bottle */
+  .bottle-wrap{ display:flex; gap:28px; align-items:center; flex-wrap:wrap; }
+  .bottle{ width:90px; flex-shrink:0; }
+  .bottle svg{ width:100%; height:auto; }
+  #waterFill{ transition: height .6s ease, y .6s ease; }
+
+  /* Rainfall mini stat */
+  .rain-stat-row{ display:flex; gap:22px; flex-wrap:wrap; margin-top:14px; padding-top:14px; border-top:1px solid var(--trace); }
+  .rain-stat{ min-width:110px; }
+  .rain-stat .lbl{ font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); margin-bottom:4px; }
+
+  /* Pump indicator */
+  .pump-visual{ display:flex; align-items:center; gap:16px; }
+  .pump-icon{ width:46px; height:46px; border-radius:50%; border:2px solid var(--trace-bright); background: var(--bg-deep); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition: all .2s; }
+  .pump-icon svg{ width:24px; height:24px; color: var(--text-dim); transition: color .2s; }
+  .pump-icon.running{ border-color: var(--blue); box-shadow: 0 0 14px 2px rgba(95,184,232,0.45); }
+  .pump-icon.running svg{ color: var(--blue); }
+  .pump-icon.running svg{ animation: spin 1.4s linear infinite; }
+  @keyframes spin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+
+  table.log{ width:100%; border-collapse:collapse; font-size:12px; margin-top:10px; }
+  table.log td{ padding:8px 0; border-bottom:1px solid var(--trace); color:var(--silk-dim); }
+  table.log td:last-child{ text-align:right; color:var(--silk); }
+
+  .about-card{ max-width:640px; }
+  .about-card p{ font-size:13px; line-height:1.7; color:var(--silk-dim); margin-bottom:12px; }
+  .endpoint-list{ list-style:none; margin-top:14px; }
+  .endpoint-list li{ font-size:11.5px; padding:8px 0; border-bottom:1px solid var(--trace); color:var(--text-dim); display:flex; gap:10px; }
+  .endpoint-list code{ color:var(--copper-bright); }
+
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px);
+    background: var(--panel-raised); border:1px solid var(--red); color:var(--silk);
+    padding:10px 18px; border-radius:var(--radius); font-size:12px;
+    opacity:0; pointer-events:none; transition: all .25s; z-index:50;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce){ .dot.pulse, .view.active, #soundNeedleGroup.wobble, .pump-icon.running svg{ animation:none !important; } }
+
+  @media (max-width: 760px){
+    .shell{ flex-direction:column; }
+    nav.rail{ width:100%; display:flex; overflow-x:auto; padding:10px; gap:4px; border-right:none; border-bottom:1px solid var(--trace); }
+    .rail-track{ display:none; }
+    .nav-item{ flex-shrink:0; width:auto; padding:8px 12px; }
+    main{ padding:20px 16px 50px; }
+    .servo-wrap, .bottle-wrap{ flex-direction:column; align-items:flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-chip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--copper-bright)"><rect x="6" y="6" width="12" height="12" rx="1"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>
+    </div>
+    <div>
+      <h1>ESP32 BOARD CONTROL</h1>
+      <small>UNIT&nbsp;// LOCAL&nbsp;NET</small>
+    </div>
+  </div>
+  <div class="conn-badge">
+    <span class="dot" id="connDot"></span>
+    <span id="connText">Checking link&hellip;</span>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="rail" aria-label="Modules">
+    <div class="rail-track"></div>
+    <button class="nav-item active" data-view="dashboard">
+      <span class="pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+      Dashboard
+    </button>
+    <button class="nav-item" data-view="led">
+      <span class="pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a6 6 0 0 0-4 10.5c.6.6 1 1.4 1 2.5h6c0-1.1.4-1.9 1-2.5A6 6 0 0 0 12 2z"/></svg></span>
+      LED Control
+    </button>
+    <button class="nav-item" data-view="servo">
+      <span class="pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+      Servo Motor
+    </button>
+    <button class="nav-item" data-view="flame">
+      <span class="pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c1 3-2 4-2 7a4 4 0 0 0 8 0c0-1-.5-2-1-2.5 1 2-1 3-1 1 0-2-2-3-2-5-1 1-2 2-2 3.5C10 8 8 10 8 13a4 4 0 0 0 4 4"/></svg></span>
+      Flame Sensor
+    </button>
+    <button class="nav-item" data-view="sound">
+      <span class="pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10v4h4l5 5V5L7 10H3z"/><path d="M16 8a5 5 0 0 1 0 8"/></svg></span>
+      Sound Sensor
+    </button>
+    <button class="nav-item" data-view="soil">
+      <span class="pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-6.5 7-12A7 7 0 0 0 5 10c0 5.5 7 12 7 12z"/></svg></span>
+      Soil Moisture
+    </button>
+    <button class="nav-item" data-view="rain">
+      <span class="pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 13v4M8 13v4M12 15v4M20 10a5 5 0 0 0-4.9-5A6 6 0 0 0 4 8.5 4.5 4.5 0 0 0 5 17.4"/></svg></span>
+      Rain Gauge / Pump
+    </button>
+    <button class="nav-item" data-view="about">
+      <span class="pad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg></span>
+      About
+    </button>
+  </nav>
+
+  <main>
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <div class="crumb"><span class="trace-line"></span>OVERVIEW</div>
+      <div class="view-title">Dashboard</div>
+      <div class="grid">
+        <div class="card">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c1 3-2 4-2 7a4 4 0 0 0 8 0c0-1-.5-2-1-2.5 1 2-1 3-1 1 0-2-2-3-2-5-1 1-2 2-2 3.5C10 8 8 10 8 13a4 4 0 0 0 4 4"/></svg>Flame</h3>
+          <span class="status-pill calm" id="dashFlamePill">Clear</span>
+          <div class="subtext" id="dashFlameCount">Detections: &mdash;</div>
+        </div>
+        <div class="card">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10v4h4l5 5V5L7 10H3z"/><path d="M16 8a5 5 0 0 1 0 8"/></svg>Sound</h3>
+          <span class="status-pill calm" id="dashSoundPill">Quiet</span>
+        </div>
+        <div class="card">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-6.5 7-12A7 7 0 0 0 5 10c0 5.5 7 12 7 12z"/></svg>Soil</h3>
+          <span class="status-pill calm" id="dashSoilPill">Dry</span>
+          <div class="readout small" style="margin-top:8px;"><span id="dashSoilVal">&mdash;</span><span class="unit">raw</span></div>
+          <div class="bar-track"><div class="bar-fill" id="dashSoilBar"></div></div>
+        </div>
+        <div class="card">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Servo</h3>
+          <div class="readout small"><span id="dashServoVal">&mdash;</span><span class="unit">&deg;</span></div>
+        </div>
+        <div class="card">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 13v4M8 13v4M12 15v4M20 10a5 5 0 0 0-4.9-5A6 6 0 0 0 4 8.5 4.5 4.5 0 0 0 5 17.4"/></svg>Rain Gauge</h3>
+          <div class="readout small"><span id="dashRainVolume">&mdash;</span><span class="unit">mL</span></div>
+          <div class="subtext" id="dashRainLevel">Level: &mdash;</div>
+          <div class="subtext" id="dashRainfall">Rainfall: &mdash;</div>
+          <span class="status-pill calm" id="dashPumpPill" style="margin-top:10px;">Pump idle</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- LED CONTROL -->
+    <section class="view" id="view-led">
+      <div class="crumb"><span class="trace-line"></span>ACTUATORS</div>
+      <div class="view-title">LED Control</div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a6 6 0 0 0-4 10.5c.6.6 1 1.4 1 2.5h6c0-1.1.4-1.9 1-2.5A6 6 0 0 0 12 2z"/></svg>Channels</h3>
+        <div id="ledList"></div>
+      </div>
+      <div class="card">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Disco Mode</h3>
+        <p class="subtext" style="margin-bottom:12px;">Cycles LED1 &rarr; LED2 &rarr; LED3 in sequence. Sending any single LED command also cancels disco mode on the board.</p>
+        <div style="display:flex; gap:10px;">
+          <button class="btn primary" id="discoOnBtn">Start disco</button>
+          <button class="btn ghost danger" id="discoOffBtn">Stop</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SERVO -->
+    <section class="view" id="view-servo">
+      <div class="crumb"><span class="trace-line"></span>ACTUATORS</div>
+      <div class="view-title">Servo Motor</div>
+      <div class="card">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Shaft Angle</h3>
+        <div class="servo-wrap">
+          <div class="dial">
+            <svg viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r="70" fill="none" stroke="#2f5540" stroke-width="8"/>
+              <path id="servoArc" fill="none" stroke="#e8944f" stroke-width="8" stroke-linecap="round"/>
+              <line id="servoNeedle" x1="80" y1="80" x2="80" y2="20" stroke="#eae7d6" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="80" cy="80" r="6" fill="#c67c45"/>
+            </svg>
+            <div class="dial-readout">
+              <div class="num" id="servoNum">90</div>
+              <div class="lbl">DEGREES</div>
+            </div>
+          </div>
+          <div class="slider-col">
+            <input type="range" min="0" max="180" value="90" id="servoSlider" aria-label="Servo angle">
+            <div class="subtext">Drag to set position &mdash; sends on release. The board confirms the real angle back, so this stays in sync.</div>
+            <div class="preset-row">
+              <button class="btn" data-angle="0">0&deg;</button>
+              <button class="btn" data-angle="45">45&deg;</button>
+              <button class="btn" data-angle="90">90&deg;</button>
+              <button class="btn" data-angle="135">135&deg;</button>
+              <button class="btn" data-angle="180">180&deg;</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FLAME -->
+    <section class="view" id="view-flame">
+      <div class="crumb"><span class="trace-line"></span>SENSORS</div>
+      <div class="view-title">Flame Sensor</div>
+      <div class="grid">
+        <div class="card">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c1 3-2 4-2 7a4 4 0 0 0 8 0c0-1-.5-2-1-2.5 1 2-1 3-1 1 0-2-2-3-2-5-1 1-2 2-2 3.5C10 8 8 10 8 13a4 4 0 0 0 4 4"/></svg>Live reading</h3>
+          <span class="status-pill calm" id="flamePill" style="font-size:13px; padding:8px 14px;">Clear</span>
+        </div>
+        <div class="card">
+          <h3>Detections</h3>
+          <div class="readout" id="flameCount">0</div>
+          <div class="subtext">Total flame events since boot</div>
+        </div>
+        <div class="card">
+          <h3>Last Detection</h3>
+          <div class="readout small" id="flameLast">&mdash;</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOUND -->
+    <section class="view" id="view-sound">
+      <div class="crumb"><span class="trace-line"></span>SENSORS</div>
+      <div class="view-title">Sound Sensor</div>
+      <div class="card">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10v4h4l5 5V5L7 10H3z"/><path d="M16 8a5 5 0 0 1 0 8"/></svg>Live reading</h3>
+        <div class="vu-wrap">
+          <div class="vu-meter">
+            <svg viewBox="0 0 200 118">
+              <defs>
+                <linearGradient id="vuGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#57ff9e"/>
+                  <stop offset="55%" stop-color="#f0b429"/>
+                  <stop offset="100%" stop-color="#ff5d5d"/>
+                </linearGradient>
+              </defs>
+              <path d="M 24 100 A 84 84 0 0 1 176 100" fill="none" stroke="#2f5540" stroke-width="10"/>
+              <path d="M 24 100 A 84 84 0 0 1 176 100" fill="none" stroke="url(#vuGradient)" stroke-width="3" stroke-dasharray="4 4" opacity="0.85"/>
+              <g id="soundNeedleGroup">
+                <line x1="100" y1="108" x2="100" y2="28" stroke="#eae7d6" stroke-width="3" stroke-linecap="round"/>
+              </g>
+              <circle cx="100" cy="108" r="7" fill="#c67c45" stroke="#e8944f" stroke-width="1.5"/>
+            </svg>
+            <div class="vu-scale-label"><span>QUIET</span><span>LOUD</span></div>
+          </div>
+          <div>
+            <span class="status-pill calm" id="soundPill" style="font-size:13px; padding:8px 14px;">Quiet</span>
+            <div class="vu-readout"><span class="num calm" id="soundMeterLabel">below threshold</span></div>
+          </div>
+        </div>
+        <p class="subtext" style="margin-top:14px;">Digital comparator output from the sound module &mdash; the board only reports on/off, edge-triggered on real change, so the needle snaps rather than sweeping.</p>
+      </div>
+    </section>
+
+    <!-- SOIL -->
+    <section class="view" id="view-soil">
+      <div class="crumb"><span class="trace-line"></span>SENSORS</div>
+      <div class="view-title">Soil Moisture</div>
+      <div class="grid">
+        <div class="card">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-6.5 7-12A7 7 0 0 0 5 10c0 5.5 7 12 7 12z"/></svg>Digital sensor</h3>
+          <span class="status-pill calm" id="soilPill" style="font-size:13px; padding:8px 14px;">Dry</span>
+          <div class="subtext">Reported directly by the board's on/off comparator pin. If this looks stuck, the trim pot on the sensor module likely needs recalibrating.</div>
+        </div>
+        <div class="card">
+          <h3>Raw Analog Value</h3>
+          <div class="readout"><span id="soilVal">0</span></div>
+          <div class="bar-track"><div class="bar-fill" id="soilBar"></div></div>
+          <div class="subtext">Lower reading generally means wetter soil on most capacitive probes.</div>
+        </div>
+        <div class="card">
+          <h3>Derived Condition</h3>
+          <span class="status-pill calm" id="soilDerivedPill" style="font-size:13px; padding:8px 14px;">&mdash;</span>
+          <div style="margin-top:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label for="soilDryThreshold" style="font-size:11px; letter-spacing:0.06em; color:var(--text-dim); text-transform:uppercase;">Dry above</label>
+              <span class="readout small" id="soilDryNum">2800</span>
+            </div>
+            <input type="range" min="0" max="4095" value="2800" id="soilDryThreshold" aria-label="Dry threshold">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+              <label for="soilWetThreshold" style="font-size:11px; letter-spacing:0.06em; color:var(--text-dim); text-transform:uppercase;">Wet below</label>
+              <span class="readout small" id="soilWetNum">1500</span>
+            </div>
+            <input type="range" min="0" max="4095" value="1500" id="soilWetThreshold" aria-label="Wet threshold">
+            <div class="subtext">Computed from the raw analog value against these two lines &mdash; useful for cross-checking the digital sensor above while you calibrate it.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RAIN GAUGE / PUMP -->
+    <section class="view" id="view-rain">
+      <div class="crumb"><span class="trace-line"></span>SENSORS &amp; ACTUATORS</div>
+      <div class="view-title">Rain Gauge / Pump</div>
+      <div class="grid">
+        <div class="card">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 13v4M8 13v4M12 15v4M20 10a5 5 0 0 0-4.9-5A6 6 0 0 0 4 8.5 4.5 4.5 0 0 0 5 17.4"/></svg>Tank Level</h3>
+          <div class="bottle-wrap">
+            <div class="bottle">
+              <svg viewBox="0 0 90 160">
+                <path d="M30 8 H60 V30 C60 34 66 36 66 44 V150 C66 154 62 158 58 158 H32 C28 158 24 154 24 150 V44 C24 36 30 34 30 30 Z"
+                      fill="none" stroke="#2f5540" stroke-width="3"/>
+                <clipPath id="bottleClip">
+                  <path d="M30 8 H60 V30 C60 34 66 36 66 44 V150 C66 154 62 158 58 158 H32 C28 158 24 154 24 150 V44 C24 36 30 34 30 30 Z"/>
+                </clipPath>
+                <rect id="waterFill" x="22" y="158" width="46" height="0" fill="#5fb8e8" opacity="0.55" clip-path="url(#bottleClip)"/>
+                <path d="M30 8 H60 V30 C60 34 66 36 66 44 V150 C66 154 62 158 58 158 H32 C28 158 24 154 24 150 V44 C24 36 30 34 30 30 Z"
+                      fill="none" stroke="#4d8a68" stroke-width="1.5"/>
+              </svg>
+            </div>
+            <div>
+              <div class="readout"><span id="rainVolumeVal">&mdash;</span><span class="unit">mL</span></div>
+              <div class="subtext" id="rainCapacityVal">of 2.0 L container</div>
+              <div class="subtext" id="rainLevelVal">Water level: &mdash;</div>
+              <div class="subtext" id="rainDistanceVal">Sensor distance: &mdash;</div>
+            </div>
+          </div>
+          <div class="rain-stat-row">
+            <div class="rain-stat">
+              <div class="lbl">Rainfall</div>
+              <div class="readout small"><span id="rainfallVal">&mdash;</span><span class="unit">mm</span></div>
+            </div>
+            <div class="rain-stat">
+              <div class="lbl">Funnel &Oslash;</div>
+              <div class="readout small"><span id="funnelVal">&mdash;</span><span class="unit">cm</span></div>
+            </div>
+            <div class="rain-stat">
+              <div class="lbl">Collected</div>
+              <div class="readout small"><span id="collectedVal">&mdash;</span><span class="unit">mL</span></div>
+            </div>
+          </div>
+          <p class="subtext" style="margin-top:14px;">The ultrasonic (HC-SR04) sensor measures the empty space above the water; volume is estimated from the ~2L container's diameter, and rainfall depth (mm) is back-calculated from that volume through the funnel's collecting area. Shows &ldquo;no reading&rdquo; if the last ultrasonic ping got no echo.</p>
+        </div>
+        <div class="card">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>12V Pump</h3>
+          <div class="pump-visual">
+            <div class="pump-icon" id="pumpIcon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6M12 16v6M2 12h6M16 12h6M6 6l4 4M18 6l-4 4M6 18l4-4M18 18l-4-4"/></svg>
+            </div>
+            <div>
+              <span class="status-pill calm" id="pumpPill" style="font-size:13px; padding:8px 14px;">Pump idle</span>
+            </div>
+          </div>
+          <p class="subtext" style="margin-top:14px;">Relay-controlled 12V DC pump, switched automatically by the board based on the tank distance reading &mdash; there's no manual override here, this just mirrors what the firmware is doing.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section class="view" id="view-about">
+      <div class="crumb"><span class="trace-line"></span>INFO</div>
+      <div class="view-title">About This Unit</div>
+      <div class="card about-card">
+        <h3>System</h3>
+        <p>This panel talks to an ESP32 board over a WebSocket bridge run by a small Express server. The board reports flame, sound, soil, and rain-gauge/pump readings continuously; the panel sends LED, disco, and servo commands over plain HTTP.</p>
+        <p>When the connection dot in the top bar is dark, the ESP32 hasn't registered itself with the server yet &mdash; commands will fail until it reconnects.</p>
+        <h3 style="margin-top:18px;">Endpoints in use</h3>
+        <ul class="endpoint-list">
+          <li><code>GET /led/:id/:state</code> &nbsp;set LED1&ndash;LED3 on or off</li>
+          <li><code>GET /disco/on</code> &nbsp;/ <code>/disco/off</code> &nbsp;disco sweep</li>
+          <li><code>GET /servo/:angle</code> &nbsp;set shaft position, 0&ndash;180</li>
+          <li><code>GET /status</code> &nbsp;connection state</li>
+          <li><code>GET /flame</code> &nbsp;full sensor + detection state (tank level, volume, rainfall mm, and pump state included)</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="toast">ESP32 Offline &mdash; command not sent</div>
+
+<script>
+const $ = sel => document.querySelector(sel);
+const $$ = sel => document.querySelectorAll(sel);
+
+/* ---------- Navigation ---------- */
+const navItems = $$('.nav-item');
+const views = $$('.view');
+navItems.forEach(item=>{
+  item.addEventListener('click', ()=>{
+    navItems.forEach(n=>n.classList.remove('active'));
+    item.classList.add('active');
+    views.forEach(v=>v.classList.remove('active'));
+    $('#view-'+item.dataset.view).classList.add('active');
+  });
+});
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function showToast(msg){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+/* ---------- API helpers ---------- */
+async function callApi(path){
+  try{
+    const res = await fetch(path);
+    if(!res.ok){
+      const body = await res.json().catch(()=>({}));
+      showToast(body.error || 'ESP32 Offline \u2014 command not sent');
+      return null;
+    }
+    return await res.json();
+  }catch(e){
+    showToast('Could not reach the server');
+    return null;
+  }
+}
+
+/* ---------- LED module (LED1, LED2, LED3 on the board) ---------- */
+const LED_CHANNELS = [1,2,3];
+const ledState = {};
+function buildLedList(){
+  const wrap = $('#ledList');
+  wrap.innerHTML = '';
+  LED_CHANNELS.forEach(id=>{
+    ledState[id] = false;
+    const row = document.createElement('div');
+    row.className = 'led-row';
+    row.innerHTML = `
+      <div class="led-info">
+        <div class="bulb" id="bulb-${id}"></div>
+        <div>
+          <div class="led-label">LED ${id}</div>
+          <div class="led-sub" id="ledsub-${id}">off</div>
+        </div>
+      </div>
+      <div class="toggle-group">
+        <button class="toggle-btn on-btn" data-id="${id}" data-state="on">On</button>
+        <button class="toggle-btn off-btn selected" data-id="${id}" data-state="off">Off</button>
+      </div>`;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('.toggle-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.id, state = btn.dataset.state;
+      const res = await callApi(`/led/${id}/${state}`);
+      if(res && res.success){
+        ledState[id] = state === 'on';
+        applyLedVisual(id);
+      }
+    });
+  });
+}
+function applyLedVisual(id){
+  const on = ledState[id];
+  $(`#bulb-${id}`).classList.toggle('lit', on);
+  $(`#ledsub-${id}`).textContent = on ? 'on' : 'off';
+  const row = $(`#bulb-${id}`).closest('.led-row');
+  row.querySelector('.on-btn').classList.toggle('selected', on);
+  row.querySelector('.off-btn').classList.toggle('selected', !on);
+}
+buildLedList();
+
+$('#discoOnBtn').addEventListener('click', ()=>callApi('/disco/on'));
+$('#discoOffBtn').addEventListener('click', ()=>callApi('/disco/off'));
+
+/* ---------- Servo module ---------- */
+const servoSlider = $('#servoSlider');
+const servoNum = $('#servoNum');
+const servoArc = $('#servoArc');
+const servoNeedle = $('#servoNeedle');
+let servoDebounce;
+let userDragging = false;
+let servoSyncPaused = false; // brief grace window after sending a command so a
+                              // poll landing mid-flight can't flash a stale angle
+
+function polarPoint(cx, cy, r, deg){
+  const rad = (deg - 90) * Math.PI/180;
+  return { x: cx + r*Math.cos(rad), y: cy + r*Math.sin(rad) };
+}
+function drawServo(angle){
+  const cx=80, cy=80, r=70;
+  const startDeg = -90, sweepDeg = (angle/180)*180 + startDeg;
+  const start = polarPoint(cx,cy,r,startDeg);
+  const end = polarPoint(cx,cy,r,sweepDeg);
+  const large = (sweepDeg - startDeg) > 180 ? 1 : 0;
+  servoArc.setAttribute('d', `M ${start.x} ${start.y} A ${r} ${r} 0 ${large} 1 ${end.x} ${end.y}`);
+  const needleDeg = (angle/180)*180 - 90;
+  const tip = polarPoint(cx,cy,58,needleDeg + 90);
+  servoNeedle.setAttribute('x2', tip.x);
+  servoNeedle.setAttribute('y2', tip.y);
+  servoNum.textContent = angle;
+}
+drawServo(90);
+
+async function commandServo(angle){
+  servoSlider.value = angle;
+  drawServo(angle);
+  userDragging = true;
+  servoSyncPaused = true;
+  await callApi(`/servo/${angle}`);
+  userDragging = false;
+  $('#dashServoVal').textContent = angle;
+  setTimeout(()=>{ servoSyncPaused = false; }, 1500);
+}
+servoSlider.addEventListener('input', ()=>{
+  userDragging = true;
+  drawServo(parseInt(servoSlider.value,10));
+});
+servoSlider.addEventListener('change', ()=>{
+  const angle = parseInt(servoSlider.value,10);
+  clearTimeout(servoDebounce);
+  servoDebounce = setTimeout(()=>commandServo(angle), 120);
+});
+$$('.preset-row .btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>commandServo(parseInt(btn.dataset.angle,10)));
+});
+
+/* ---------- Soil derived-condition thresholds ---------- */
+const soilDrySlider = $('#soilDryThreshold');
+const soilWetSlider = $('#soilWetThreshold');
+const soilDryNum = $('#soilDryNum');
+const soilWetNum = $('#soilWetNum');
+let soilDryThreshold = parseInt(soilDrySlider.value, 10);
+let soilWetThreshold = parseInt(soilWetSlider.value, 10);
+soilDrySlider.addEventListener('input', ()=>{
+  soilDryThreshold = parseInt(soilDrySlider.value, 10);
+  soilDryNum.textContent = soilDryThreshold;
+});
+soilWetSlider.addEventListener('input', ()=>{
+  soilWetThreshold = parseInt(soilWetSlider.value, 10);
+  soilWetNum.textContent = soilWetThreshold;
+});
+
+/* ---------- Polling live state ---------- */
+async function poll(){
+  try{
+    const res = await fetch('/flame');
+    if(!res.ok) throw new Error('bad status');
+    const data = await res.json();
+    updateConnection(data.connected);
+    updateFlame(data);
+    updateSound(data);
+    updateSoil(data);
+    updateRain(data);
+    updateServoFromState(data);
+  }catch(e){
+    updateConnection(false);
+  }
+}
+
+function updateConnection(connected){
+  const dot = $('#connDot');
+  const text = $('#connText');
+  dot.classList.toggle('on', connected);
+  dot.classList.toggle('pulse', connected);
+  text.textContent = connected ? 'ESP32 Connected' : 'ESP32 Offline';
+}
+
+function updateFlame(data){
+  const active = !!data.flame;
+  const label = active ? 'Flame detected' : 'Clear';
+  [ $('#flamePill'), $('#dashFlamePill') ].forEach(el=>{
+    el.classList.toggle('active', active);
+    el.classList.toggle('calm', !active);
+    el.textContent = label;
+  });
+  $('#flameCount').textContent = data.detectionCount ?? 0;
+  $('#dashFlameCount').textContent = `Detections: ${data.detectionCount ?? 0}`;
+  $('#flameLast').textContent = data.lastDetection || 'No events yet';
+}
+
+function updateSound(data){
+  const active = !!data.sound;
+  const label = active ? 'Sound detected' : 'Quiet';
+  [ $('#soundPill'), $('#dashSoundPill') ].forEach(el=>{
+    el.classList.toggle('active', active);
+    el.classList.toggle('calm', !active);
+    el.textContent = label;
+  });
+  const needle = $('#soundNeedleGroup');
+  needle.style.transform = active ? 'rotate(58deg)' : 'rotate(-58deg)';
+  needle.classList.toggle('wobble', active);
+  const meterLabel = $('#soundMeterLabel');
+  meterLabel.textContent = active ? 'above threshold' : 'below threshold';
+  meterLabel.classList.toggle('active', active);
+  meterLabel.classList.toggle('calm', !active);
+}
+
+function updateSoil(data){
+  const val = data.soilValue ?? 0;
+
+  const wet = !!data.soilWet;
+  const digitalPill = $('#soilPill');
+  digitalPill.classList.toggle('active', !wet);
+  digitalPill.classList.toggle('calm', wet);
+  digitalPill.textContent = wet ? 'Wet' : 'Dry';
+  [ $('#dashSoilPill') ].forEach(el=>{
+    el.classList.toggle('active', !wet);
+    el.classList.toggle('calm', wet);
+    el.textContent = wet ? 'Wet' : 'Dry';
+  });
+
+  let statusLabel, statusClass;
+  if(val >= soilDryThreshold){ statusLabel = 'Dry'; statusClass = 'active'; }
+  else if(val <= soilWetThreshold){ statusLabel = 'Wet'; statusClass = 'calm'; }
+  else { statusLabel = 'Moist'; statusClass = 'moist'; }
+  const derivedPill = $('#soilDerivedPill');
+  derivedPill.classList.remove('active','calm','moist');
+  derivedPill.classList.add(statusClass);
+  derivedPill.textContent = statusLabel;
+
+  $('#soilVal').textContent = val;
+  $('#dashSoilVal').textContent = val;
+  const pct = Math.max(0, Math.min(100, 100 - (val/4095)*100));
+  $('#soilBar').style.width = pct + '%';
+  $('#dashSoilBar').style.width = pct + '%';
+}
+
+function updateRain(data){
+  const hasReading = data.waterLevel !== null && data.waterLevel !== undefined;
+  const level = hasReading ? data.waterLevel : null;
+  const volume = data.rainVolume ?? null;
+  const distance = data.rainDistance ?? null;
+  const rainfall = data.rainfallMM ?? null;
+  const funnel = data.funnelDiameter ?? null;
+  const collected = data.collectedWater ?? null;
+  const capacityML = data.containerCapacityML || 2000;
+
+  $('#rainVolumeVal').textContent = volume !== null ? volume.toFixed(1) : '\u2014';
+  $('#rainCapacityVal').textContent = `of ${(capacityML/1000).toFixed(1)} L container`;
+  $('#rainLevelVal').textContent = 'Water level: ' + (level !== null ? level.toFixed(1) + ' cm' : 'no reading');
+  $('#rainDistanceVal').textContent = 'Sensor distance: ' + (distance !== null ? distance.toFixed(1) + ' cm' : 'no reading');
+  $('#rainfallVal').textContent = rainfall !== null ? rainfall.toFixed(1) : '\u2014';
+  $('#funnelVal').textContent = funnel !== null ? funnel.toFixed(1) : '\u2014';
+  $('#collectedVal').textContent = collected !== null ? collected.toFixed(1) : '\u2014';
+
+  $('#dashRainVolume').textContent = volume !== null ? volume.toFixed(0) : '\u2014';
+  $('#dashRainLevel').textContent = 'Level: ' + (level !== null ? level.toFixed(1) + ' cm' : '\u2014');
+  $('#dashRainfall').textContent = 'Rainfall: ' + (rainfall !== null ? rainfall.toFixed(1) + ' mm' : '\u2014');
+
+  const pct = volume !== null ? Math.max(0, Math.min(100, (volume / capacityML) * 100)) : 0;
+  const fillHeight = (pct/100) * 114;
+  const fill = $('#waterFill');
+  fill.setAttribute('height', fillHeight);
+  fill.setAttribute('y', 158 - fillHeight);
+
+  const pumpOn = !!data.pumpRunning;
+  const pumpLabel = pumpOn ? 'Pump running' : 'Pump idle';
+  [ $('#pumpPill'), $('#dashPumpPill') ].forEach(el=>{
+    el.classList.toggle('running', pumpOn);
+    el.classList.toggle('calm', !pumpOn);
+    el.textContent = pumpLabel;
+  });
+  $('#pumpIcon').classList.toggle('running', pumpOn);
+}
+
+function updateServoFromState(data){
+  if(userDragging || servoSyncPaused) return;
+  const angle = data.servoAngle ?? 90;
+  $('#dashServoVal').textContent = angle;
+  if(document.activeElement !== servoSlider){
+    servoSlider.value = angle;
+    drawServo(angle);
+  }
+}
+
+poll();
+setInterval(poll, 1200);
+</script>
+</body>
+</html>

@@ -1,0 +1,406 @@
+﻿/* ============================================================
+   Form Selection Modal   Professional redesign
+   Namespaced with form-modal-* / form-card* to avoid collisions
+   ============================================================ */
+
+/* ---------- Overlay ---------- */
+.form-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 14, 26, 0.60);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 16px;
+  overflow-y: auto;
+  z-index: 1200;
+  animation: fmOverlayIn 0.18s ease-out;
+}
+
+@keyframes fmOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ---------- Modal container ---------- */
+.form-modal-content {
+  width: min(660px, 100%);
+  background: #ffffff;
+  border: 1px solid #e4eaf3;
+  border-radius: 20px;
+  padding: 0;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,.04),
+    0 10px 32px rgba(9,18,50,0.14),
+    0 40px 80px rgba(9,18,50,0.10);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fmSlideIn 0.22s cubic-bezier(.16,1,.3,1);
+}
+
+@keyframes fmSlideIn {
+  from { opacity: 0; transform: translateY(-16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* ---------- Header ---------- */
+.form-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid #edf1f7;
+  background: linear-gradient(135deg, #f8faff 0%, #ffffff 100%);
+}
+
+.form-modal-header-info h3 {
+  margin: 0 0 3px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f1c33;
+  line-height: 1.2;
+}
+
+.form-modal-header-info p {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7fa0;
+  line-height: 1.4;
+}
+
+.form-modal-close-button {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  border: 1px solid #dde4ef;
+  background: #f4f8ff;
+  color: #5a718e;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.form-modal-close-button:hover {
+  background: #fff1f1;
+  border-color: #f0b0b0;
+  color: #c0323a;
+  transform: scale(1.05);
+}
+
+/* ---------- Body ---------- */
+.form-modal-body {
+  padding: 18px 22px 20px;
+  overflow-y: auto;
+}
+
+/* ---------- Grid ---------- */
+.form-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.form-selection-grid .form-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+/* ---------- Card base ---------- */
+.form-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  padding: 14px;
+  border: 1.5px solid #e4eaf3;
+  border-radius: 14px;
+  background: #fafbff;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  overflow: hidden;
+}
+
+/* ---------- Icon badge ---------- */
+.form-card-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+}
+
+/* ---------- Text block ---------- */
+.form-card-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-card-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 20px;
+  margin-bottom: 5px;
+  line-height: 1.5;
+}
+
+.form-card-text h4 {
+  margin: 0 0 3px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0f1c33;
+  line-height: 1.2;
+}
+
+.form-card-text p {
+  margin: 0;
+  font-size: 12.5px;
+  color: #6b7fa0;
+  line-height: 1.4;
+}
+
+/* ---------- Arrow indicator ---------- */
+.form-card-arrow {
+  font-size: 22px;
+  line-height: 1;
+  color: #c0ccdb;
+  flex-shrink: 0;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+/* ============================================================
+   Color variants
+   ============================================================ */
+
+/* Blue  Property Details */
+.form-card--blue .form-card-icon {
+  background: #eff4ff;
+  color: #3b72f6;
+}
+.form-card--blue .form-card-tag {
+  background: #e8efff;
+  color: #3b72f6;
+}
+.form-card--blue:hover {
+  border-color: #3b72f6;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(59, 114, 246, 0.14);
+}
+.form-card--blue:hover .form-card-icon { transform: scale(1.1); }
+.form-card--blue:hover .form-card-arrow { color: #3b72f6; transform: translateX(3px); }
+
+/* Orange  119 Notice */
+.form-card--orange .form-card-icon {
+  background: #fff5eb;
+  color: #e07b1f;
+}
+.form-card--orange .form-card-tag {
+  background: #fff0e0;
+  color: #d4700e;
+}
+.form-card--orange:hover {
+  border-color: #e07b1f;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(224, 123, 31, 0.14);
+}
+.form-card--orange:hover .form-card-icon { transform: scale(1.1); }
+.form-card--orange:hover .form-card-arrow { color: #e07b1f; transform: translateX(3px); }
+
+/* Green  Hearing Notice */
+.form-card--green .form-card-icon {
+  background: #f0fdf5;
+  color: #17a34a;
+}
+.form-card--green .form-card-tag {
+  background: #e3fbed;
+  color: #15943f;
+}
+.form-card--green:hover {
+  border-color: #17a34a;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(23, 163, 74, 0.14);
+}
+.form-card--green:hover .form-card-icon { transform: scale(1.1); }
+.form-card--green:hover .form-card-arrow { color: #17a34a; transform: translateX(3px); }
+
+/* Red  Appeal Form */
+.form-card--red .form-card-icon {
+  background: #fff3f3;
+  color: #d93948;
+}
+.form-card--red .form-card-tag {
+  background: #ffe8ea;
+  color: #c83040;
+}
+.form-card--red:hover {
+  border-color: #d93948;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(217, 57, 72, 0.14);
+}
+.form-card--red:hover .form-card-icon { transform: scale(1.1); }
+.form-card--red:hover .form-card-arrow { color: #d93948; transform: translateX(3px); }
+
+/* Purple  Namuna 43 */
+.form-card--purple .form-card-icon {
+  background: #f5f2ff;
+  color: #7738e8;
+}
+.form-card--purple .form-card-tag {
+  background: #ede8ff;
+  color: #6d2fe0;
+}
+.form-card--purple:hover {
+  border-color: #7738e8;
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(119, 56, 232, 0.14);
+}
+.form-card--purple:hover .form-card-icon { transform: scale(1.1); }
+.form-card--purple:hover .form-card-arrow { color: #7738e8; transform: translateX(3px); }
+
+/* Active press */
+.form-card:active {
+  transform: scale(0.98);
+}
+
+/* ============================================================
+   Dark mode  (.map-container.dark  parent)
+   ============================================================ */
+.map-container.dark .form-modal-overlay {
+  background: rgba(4, 8, 16, 0.70);
+}
+
+.map-container.dark .form-modal-content {
+  background: #111827;
+  border-color: #1f2d42;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,.2),
+    0 10px 32px rgba(0,0,0,.40),
+    0 40px 80px rgba(0,0,0,.30);
+}
+
+.map-container.dark .form-modal-header {
+  background: linear-gradient(135deg, #131e30 0%, #111827 100%);
+  border-bottom-color: #1f2d42;
+}
+
+.map-container.dark .form-modal-header-info h3 {
+  color: #e8f0fc;
+}
+
+.map-container.dark .form-modal-header-info p {
+  color: #7a94b8;
+}
+
+.map-container.dark .form-modal-close-button {
+  background: #1a2640;
+  border-color: #2b3d5a;
+  color: #8aa0c0;
+}
+
+.map-container.dark .form-modal-close-button:hover {
+  background: #3d1c20;
+  border-color: #7a2e34;
+  color: #ff9fa6;
+}
+
+.map-container.dark .form-card {
+  background: #141e30;
+  border-color: #1f2d42;
+}
+
+.map-container.dark .form-card-text h4 {
+  color: #e0eaf8;
+}
+
+.map-container.dark .form-card-text p {
+  color: #7a94b8;
+}
+
+.map-container.dark .form-card-arrow {
+  color: #3a4e68;
+}
+
+/* Dark color variants */
+.map-container.dark .form-card--blue .form-card-icon  { background: #172038; color: #6b9dff; }
+.map-container.dark .form-card--blue .form-card-tag   { background: #152038; color: #6b9dff; }
+.map-container.dark .form-card--blue:hover { border-color: #4d80f8; box-shadow: 0 4px 20px rgba(77,128,248,.18); background: #19253d; }
+.map-container.dark .form-card--blue:hover .form-card-arrow { color: #6b9dff; }
+
+.map-container.dark .form-card--orange .form-card-icon { background: #261700; color: #ffaa55; }
+.map-container.dark .form-card--orange .form-card-tag  { background: #2a1800; color: #ffaa55; }
+.map-container.dark .form-card--orange:hover { border-color: #d4820a; box-shadow: 0 4px 20px rgba(212,130,10,.18); background: #211600; }
+.map-container.dark .form-card--orange:hover .form-card-arrow { color: #ffaa55; }
+
+.map-container.dark .form-card--green .form-card-icon { background: #0d2117; color: #45c77c; }
+.map-container.dark .form-card--green .form-card-tag  { background: #0b1e12; color: #45c77c; }
+.map-container.dark .form-card--green:hover { border-color: #1e8c52; box-shadow: 0 4px 20px rgba(30,140,82,.18); background: #0f2018; }
+.map-container.dark .form-card--green:hover .form-card-arrow { color: #45c77c; }
+
+.map-container.dark .form-card--red .form-card-icon { background: #261017; color: #ff7c88; }
+.map-container.dark .form-card--red .form-card-tag  { background: #250e15; color: #ff7c88; }
+.map-container.dark .form-card--red:hover { border-color: #c73542; box-shadow: 0 4px 20px rgba(199,53,66,.18); background: #241018; }
+.map-container.dark .form-card--red:hover .form-card-arrow { color: #ff7c88; }
+
+.map-container.dark .form-card--purple .form-card-icon { background: #1a1030; color: #b57aff; }
+.map-container.dark .form-card--purple .form-card-tag  { background: #1a0e2e; color: #b57aff; }
+.map-container.dark .form-card--purple:hover { border-color: #8844e0; box-shadow: 0 4px 20px rgba(136,68,224,.18); background: #1c1232; }
+.map-container.dark .form-card--purple:hover .form-card-arrow { color: #b57aff; }
+
+/* ============================================================
+   Responsive  mobile sheet slide-up
+   ============================================================ */
+@media (max-width: 640px) {
+  .form-modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .form-modal-content {
+    width: 100%;
+    border-radius: 20px 20px 0 0;
+    animation: fmSlideUp 0.25s cubic-bezier(.16,1,.3,1);
+  }
+
+  @keyframes fmSlideUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+
+  .form-selection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-selection-grid .form-card:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  .form-modal-header {
+    padding: 16px 16px 14px;
+  }
+
+  .form-modal-body {
+    padding: 14px 16px 20px;
+  }
+
+  .form-card {
+    padding: 12px;
+  }
+}

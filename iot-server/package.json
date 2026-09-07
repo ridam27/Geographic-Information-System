@@ -1,0 +1,20 @@
+{
+  "name": "iot-server",
+  "version": "1.0.0",
+  "description": "Local MQTT IoT server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mqtt": "^5.15.2",
+    "mysql2": "^3.24.2",
+    "ws": "^8.21.3"
+  }
+}

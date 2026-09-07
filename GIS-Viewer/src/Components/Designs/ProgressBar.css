@@ -1,0 +1,13 @@
+/* ProgressBar.css */
+
+.progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 5px;
+    background-color: yellow;
+    transition: width 0.3s ease-in-out;
+    z-index: 1000;
+    width: 0;
+  }
+  

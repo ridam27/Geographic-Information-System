@@ -1,0 +1,64 @@
+/* General reset and body styling */
+body {
+    margin-top: '20vh';
+    font-family: Arial, sans-serif;
+    background-color: #f8f9fa;
+  }
+  
+  /* Map container and input section styling */
+  .map-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative; /* Ensure inputs are placed relative to the container */
+  }
+  
+  .input-container {
+    position: absolute;
+    top:35px; /* Adjust this value to position the input area vertically */
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 1000; /* Ensure it's on top of the map */
+    background-color: rgba(255, 255, 255, 0.8); /* Optional: gives some background to the input area */
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .input-container input {
+    padding: 8px;
+    margin: 5px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    width: 200px;
+  }
+  
+  .input-container button {
+    padding: 8px 16px;
+    background-color: #2292ed;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .input-container button:hover {
+    background-color: #2196f9;
+  }
+  
+  /* Map styling */
+  .map-wrapper {
+    width: 100%;
+    height: calc(100vh - 50px); /* Adjust height to avoid input box overlap */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .leaflet-container {
+    width: 100%;
+    height: 100%;
+  }
+  

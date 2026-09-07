@@ -1,0 +1,34 @@
+# Dependencies / generated folders
+node_modules/
+venv/
+build/
+dist/
+__pycache__/
+*.pyc
+
+# Python packaging
+*.egg-info/
+
+# PHP
+vendor/
+
+# Env files with secrets — never commit these
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+backend_stdout.log
+backend_stderr.log
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
+
+# Misc
+coverage/
