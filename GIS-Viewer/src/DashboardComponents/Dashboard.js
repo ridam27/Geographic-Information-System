@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Drawer,
@@ -38,8 +38,14 @@ const Dashboard = () => {
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   const toggleSidebar = () => {
-    setSidebarOpen(!isSidebarOpen);
+    setSidebarOpen((prev) => !prev);
   };
+
+  useEffect(() => {
+    const handleToggle = () => setSidebarOpen((prev) => !prev);
+    window.addEventListener("toggle-gis-sidebar", handleToggle);
+    return () => window.removeEventListener("toggle-gis-sidebar", handleToggle);
+  }, []);
 
   // Define all sidebar options in one place
   const sidebarOptions = [

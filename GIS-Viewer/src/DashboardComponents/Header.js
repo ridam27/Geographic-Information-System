@@ -1,389 +1,131 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Box,
   Typography,
   IconButton,
-  Button,
-  Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  useMediaQuery,
-  Avatar,
-  Menu,
-  MenuItem,
-  Badge
+  Tooltip,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
-  Map,
-  Layers,
   Public,
-  FindInPage,
-  Download,
-  Settings,
-  Help,
-  Person,
-  Logout,
-  Notifications,
-  Brightness4,
-  Brightness7
 } from "@mui/icons-material";
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 
-const Header = ({ toggleDarkMode, darkMode }) => {
-  const isMobile = useMediaQuery('(max-width:900px)');
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-  
-  const toggleDrawer = () => {
-    setDrawerOpen(!drawerOpen);
+const Header = ({ onToggleSidebar }) => {
+  const handleHamburgerClick = () => {
+    if (onToggleSidebar) {
+      onToggleSidebar();
+    } else {
+      window.dispatchEvent(new CustomEvent("toggle-gis-sidebar"));
+    }
   };
-  
-  const handleMenu = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-  
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-  
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-    
-  };
-  
+
   return (
-    <>
-      {/* Main Header */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          py: 1.5,
-          px: 3,
-          backgroundColor: darkMode ? "#1a1a2e" : "#ffffff",
-          color: darkMode ? "#e0e0e0" : "#333333",
-          borderBottom: `1px solid ${darkMode ? "#333344" : "#e0e0e0"}`,
-          position: "sticky",
-          top: 0,
-          zIndex: 1100,
-          height: "64px",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.08)"
-        }}
-      >
-        {/* Left side - Logo and title */}
-        <Box sx={{ display: "flex", alignItems: "center" }}>
-          {isMobile && (
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              edge="start"
-              onClick={toggleDrawer}
-              sx={{ mr: 2 }}
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
-          
-          <Box sx={{ display: "flex", alignItems: "center", ml: 6 }}>
-  <Box 
-    sx={{ 
-      bgcolor: darkMode ? "#3a5199" : "#4b6bdd", 
-      width: 36, 
-      height: 36, 
-      borderRadius: "8px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      mr: 1.5
-    }}
-  >
-    <Public sx={{ color: "#ffffff", fontSize: 22 }} />
-  </Box>
-  <Typography 
-    variant="h6" 
-    component="div" 
-    sx={{ 
-      fontWeight: 700, 
-      letterSpacing: "0.5px",
-      color: darkMode ? "#ffffff" : "#333333"
-    }}
-  >
-    Cojag
-    <Typography 
-      component="span" 
-      sx={{ 
-        ml: 0.5, 
-        color: darkMode ? "#64b5f6" : "#5c78ff", 
-        fontWeight: 500 
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        px: { xs: 2, sm: 3 },
+        height: "60px",
+        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+        color: "#ffffff",
+        borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+        position: "sticky",
+        top: 0,
+        zIndex: 1100,
+        boxShadow: "0 4px 20px -2px rgba(0, 0, 0, 0.3)",
       }}
     >
-      GIS
-    </Typography>
-  </Typography>
-</Box>
-
-        </Box>
-        
-        {/* Center - Navigation */}
-        {!isMobile && (
-          <Box sx={{ display: "flex", gap: "8px", position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
-            <Button 
-              variant={darkMode ? "text" : "contained"} 
-              disableElevation
-              sx={{ 
-                backgroundColor: darkMode ? "transparent" : "#f0f4ff",
-                color: darkMode ? "#ffffff" : "#333333",
-                borderRadius: "8px",
-                fontSize: "0.875rem",
-                textTransform: "none",
-                fontWeight: 500,
-                px: 2,
-                "&:hover": {
-                  backgroundColor: darkMode ? "rgba(255,255,255,0.1)" : "#e6ebff"
-                },
-                border: darkMode ? "1px solid rgba(255,255,255,0.12)" : "none"
-              }}
-            >
-              Dashboard
-            </Button>
-            
-            <Button 
-              variant="text" 
-              sx={{ 
-                color: darkMode ? "rgba(255,255,255,0.7)" : "#666666",
-                borderRadius: "8px",
-                fontSize: "0.875rem",
-                textTransform: "none",
-                fontWeight: 500,
-                px: 2
-              }}
-            >
-              Projects
-            </Button>
-            
-            <Button 
-              variant="text" 
-              sx={{ 
-                color: darkMode ? "rgba(255,255,255,0.7)" : "#666666",
-                borderRadius: "8px",
-                fontSize: "0.875rem",
-                textTransform: "none",
-                fontWeight: 500,
-                px: 2
-              }}
-            >
-              Analysis
-            </Button>
-            
-            <Button 
-              variant="text" 
-              sx={{ 
-                color: darkMode ? "rgba(255,255,255,0.7)" : "#666666",
-                borderRadius: "8px",
-                fontSize: "0.875rem",
-                textTransform: "none",
-                fontWeight: 500,
-                px: 2
-              }}
-            >
-              Data Library
-            </Button>
-          </Box>
-        )}
-        
-        {/* Right - Actions */}
-        <Box sx={{ display: "flex", alignItems: "center" }}>
-          <IconButton 
-            color="inherit"
-            sx={{ 
-              mr: { xs: 1, md: 1.5 },
-              color: darkMode ? "rgba(255,255,255,0.7)" : "#666666",
-            }}
-            onClick={toggleDarkMode}
-          >
-            {darkMode ? <Brightness7 /> : <Brightness4 />}
-          </IconButton>
-          
-          <IconButton 
-            color="inherit"
-            sx={{ 
-              mr: { xs: 1, md: 1.5 },
-              color: darkMode ? "rgba(255,255,255,0.7)" : "#666666",
-            }}
-          >
-            <Badge badgeContent={3} color="error">
-              <Notifications />
-            </Badge>
-          </IconButton>
-          
-          <Avatar 
-            onClick={handleMenu}
-            sx={{ 
-              width: 36, 
-              height: 36, 
-              cursor: "pointer",
-              bgcolor: darkMode ? "#64b5f6" : "#4b6bdd",
-            }}
-          >
-            <Person />
-          </Avatar>
-          
-          <Menu
-            id="menu-appbar"
-            anchorEl={anchorEl}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'right',
-            }}
-            keepMounted
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'right',
-            }}
-            open={Boolean(anchorEl)}
-            onClose={handleClose}
+      {/* Left section: Hamburger Menu & Logo */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        {/* Hamburger Menu Button */}
+        <Tooltip title="Toggle Menu">
+          <IconButton
+            onClick={handleHamburgerClick}
             sx={{
-              "& .MuiPaper-root": {
-                borderRadius: 2,
-                minWidth: 180,
-                boxShadow: "0px 8px 20px rgba(0,0,0,0.15)",
-                mt: 1.5
-              }
+              color: "#f8fafc",
+              backgroundColor: "rgba(255, 255, 255, 0.06)",
+              borderRadius: "10px",
+              padding: "8px",
+              transition: "all 0.2s ease-in-out",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.15)",
+                transform: "scale(1.05)",
+                borderColor: "rgba(255, 255, 255, 0.25)",
+              },
+              "&:active": {
+                transform: "scale(0.95)",
+              },
             }}
           >
-            <MenuItem onClick={handleClose}>Profile</MenuItem>
-            <MenuItem onClick={handleClose}>Account Settings</MenuItem>
-            <Divider />
-            <MenuItem onClick={handleClose}>Help & Support</MenuItem>
-            <MenuItem onClick={handleLogout} sx={{ color: "error.main" }}>
-              <ListItemIcon sx={{ color: "error.main" }}>
-                <Logout fontSize="small" />
-              </ListItemIcon>
-              Logout
-            </MenuItem>
-          </Menu>
-        </Box>
-      </Box>
-      
-      {/* Sidebar Drawer for Mobile */}
-      <Drawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={toggleDrawer}
-        sx={{
-          '& .MuiDrawer-paper': {
-            width: 260,
-            backgroundColor: darkMode ? "#1a1a2e" : "#ffffff",
-            color: darkMode ? "#e0e0e0" : "#333333",
-            borderRight: `1px solid ${darkMode ? "#333344" : "#e0e0e0"}`,
-          },
-        }}
-      >
-        <Box sx={{ p: 2, display: "flex", alignItems: "center" }}>
-          <Box 
-            sx={{ 
-              bgcolor: darkMode ? "#3a5199" : "#4b6bdd", 
-              width: 36, 
-              height: 36, 
-              borderRadius: "8px",
+            <MenuIcon sx={{ fontSize: 24 }} />
+          </IconButton>
+        </Tooltip>
+
+        {/* Logo */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box
+            sx={{
+              background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+              width: 38,
+              height: 38,
+              borderRadius: "10px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              mr: 1.5
+              boxShadow: "0 2px 10px rgba(59, 130, 246, 0.4)",
             }}
           >
             <Public sx={{ color: "#ffffff", fontSize: 22 }} />
           </Box>
-          <Typography 
-            variant="h6" 
-            component="div" 
-            sx={{ 
-              fontWeight: 700, 
-              letterSpacing: "0.5px",
-              color: darkMode ? "#ffffff" : "#333333"
-            }}
-          >
-            GeoViz
-            <Typography 
-              component="span" 
-              sx={{ 
-                ml: 0.5, 
-                color: darkMode ? "#64b5f6" : "#5c78ff", 
-                fontWeight: 500 
+          <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{
+                fontWeight: 800,
+                letterSpacing: "-0.3px",
+                color: "#ffffff",
+                fontSize: "1.25rem",
+                fontFamily: "'Inter', 'Roboto', sans-serif",
               }}
             >
-              Pro
+              Cojag
+              <Typography
+                component="span"
+                sx={{
+                  ml: 0.5,
+                  color: "#38bdf8",
+                  fontWeight: 700,
+                  fontSize: "1.25rem",
+                }}
+              >
+                GIS
+              </Typography>
             </Typography>
-          </Typography>
+            <Box
+              sx={{
+                ml: 1,
+                px: 1,
+                py: 0.2,
+                borderRadius: "6px",
+                backgroundColor: "rgba(56, 189, 248, 0.12)",
+                color: "#38bdf8",
+                border: "1px solid rgba(56, 189, 248, 0.25)",
+                fontSize: "0.65rem",
+                fontWeight: 700,
+                letterSpacing: "1px",
+                textTransform: "uppercase",
+                display: { xs: "none", sm: "inline-block" },
+              }}
+            >
+              Viewer
+            </Box>
+          </Box>
         </Box>
-        
-        <Divider sx={{ backgroundColor: darkMode ? "#333344" : "#e0e0e0" }} />
-        
-        <List>
-          <ListItem button selected>
-            <ListItemIcon sx={{ color: darkMode ? "#64b5f6" : "#5c78ff" }}>
-              <Map />
-            </ListItemIcon>
-            <ListItemText primary="Dashboard" />
-          </ListItem>
-          
-          <ListItem button>
-            <ListItemIcon sx={{ color: darkMode ? "rgba(255,255,255,0.7)" : "#666666" }}>
-              <Layers />
-            </ListItemIcon>
-            <ListItemText primary="Projects" />
-          </ListItem>
-          
-          <ListItem button>
-            <ListItemIcon sx={{ color: darkMode ? "rgba(255,255,255,0.7)" : "#666666" }}>
-              <FindInPage />
-            </ListItemIcon>
-            <ListItemText primary="Analysis" />
-          </ListItem>
-          
-          <ListItem button>
-            <ListItemIcon sx={{ color: darkMode ? "rgba(255,255,255,0.7)" : "#666666" }}>
-              <Public />
-            </ListItemIcon>
-            <ListItemText primary="Data Library" />
-          </ListItem>
-        </List>
-        
-        <Divider sx={{ backgroundColor: darkMode ? "#333344" : "#e0e0e0" }} />
-        
-        <List>
-          <ListItem button>
-            <ListItemIcon sx={{ color: darkMode ? "rgba(255,255,255,0.7)" : "#666666" }}>
-              <Download />
-            </ListItemIcon>
-            <ListItemText primary="Export Data" />
-          </ListItem>
-          
-          <ListItem button>
-            <ListItemIcon sx={{ color: darkMode ? "rgba(255,255,255,0.7)" : "#666666" }}>
-              <Settings />
-            </ListItemIcon>
-            <ListItemText primary="Settings" />
-          </ListItem>
-          
-          <ListItem button>
-            <ListItemIcon sx={{ color: darkMode ? "rgba(255,255,255,0.7)" : "#666666" }}>
-              <Help />
-            </ListItemIcon>
-            <ListItemText primary="Help & Support" />
-          </ListItem>
-        </List>
-      </Drawer>
-    </>
+      </Box>
+    </Box>
   );
 };
 

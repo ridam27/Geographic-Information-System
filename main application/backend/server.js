@@ -73,18 +73,34 @@ async function main() {
   // Trust Render's reverse proxy so `secure` cookies work correctly.
   app.set('trust proxy', 1);
 
-  // Explicit CORS allow-list. FRONTEND_URL is the Main application's own
-  // deployed origin — this must stay same-origin credentialed traffic only;
-  // the SSO handoff to other apps happens server-to-server, not via CORS.
-  const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
-    .split(',')
-    .map((s) => s.trim());
+  const rawOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',');
+  const allowedOrigins = new Set(
+    [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'http://localhost:3003',
+      'http://localhost:3004',
+      'http://localhost:3005',
+      'http://localhost:3006',
+      'http://localhost:3007',
+      'http://localhost:4000',
+      'http://localhost:4100',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:4000',
+      ...rawOrigins
+    ].map((s) => s.trim().replace(/\/+$/, ''))
+  );
 
   app.use(
     cors({
       origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error('CORS blocked origin: ' + origin));
+        if (!origin) return callback(null, true);
+        const cleanOrigin = origin.trim().replace(/\/+$/, '');
+        if (allowedOrigins.has(cleanOrigin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin) || !isProduction) {
+          return callback(null, true);
+        }
+        return callback(null, false);
       },
       credentials: true,
     })

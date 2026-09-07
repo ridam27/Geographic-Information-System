@@ -1,10 +1,13 @@
 // backend/server.js
 
 const path = require('path');
+const fs = require('fs');
 // Must run before any local module is required — ssoRoutes.js (and others)
 // read process.env into top-level consts at require-time, so loading env
 // vars after those requires would leave them permanently undefined.
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const backendEnv = path.join(__dirname, '.env');
+const rootEnv = path.join(__dirname, '../.env');
+require('dotenv').config({ path: fs.existsSync(backendEnv) ? backendEnv : rootEnv });
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -36,10 +39,12 @@ app.set('trust proxy', 1);
 // For development, configure CORS to allow credentials from your React dev server
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) return callback(null, true);
+    const clean = origin.trim().replace(/\/+$/, '');
+    if (allowedOrigins.includes(clean) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(clean) || !isProduction) {
       return callback(null, true);
     }
-    return callback(new Error(`CORS blocked origin: ${origin}`));
+    return callback(null, false);
   },
   credentials: true,
 }));

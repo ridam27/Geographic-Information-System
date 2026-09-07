@@ -65,6 +65,13 @@ const SERVICES = [
     args: ['run', 'start:cra'],
   },
   {
+    name: 'VIEWER-FE',
+    color: 'cyan',
+    cwd: path.join(ROOT, 'GIS-Viewer'),
+    cmd: 'npm',
+    args: ['run', 'start'],
+  },
+  {
     name: 'VIEWER-BE',
     color: 'cyan',
     cwd: path.join(ROOT, 'GIS-Viewer', 'backend'),
