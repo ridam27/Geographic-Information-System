@@ -6,8 +6,15 @@ import io
 import base64
 import tempfile
 import os
+import sys
 from typing import List, Dict, Any
 from pathlib import Path
+
+# Force UTF-8 stdout/stderr encoding on Windows to prevent charmap UnicodeEncodeErrors
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 import cv2
 import numpy as np
@@ -48,7 +55,7 @@ def get_ocr_reader():
     global _reader
     if _reader is None and EASYOCR_AVAILABLE:
         print("Initializing EasyOCR (this may take a moment)...")
-        _reader = easyocr.Reader(['en'], gpu=False)
+        _reader = easyocr.Reader(['en'], gpu=False, verbose=False)
     return _reader
 
 
@@ -499,53 +506,43 @@ async def digitize_drawing(file: UploadFile = File(...)):
     if color_img is None:
         raise HTTPException(status_code=400, detail="Could not decode image. Ensure it's a valid JPG/PNG.")
 
-    height, width = color_img.shape[:2]
-    gray_img = cv2.cvtColor(color_img, cv2.COLOR_BGR2GRAY)
-    cv2.imwrite("01_original.png", color_img)
-# OCR first
-    text_blocks = detect_text_easyocr(color_img)
+    try:
+        height, width = color_img.shape[:2]
+        gray_img = cv2.cvtColor(color_img, cv2.COLOR_BGR2GRAY)
+        cv2.imwrite("01_original.png", color_img)
 
-# Remove text from image
-    masked_color = mask_text_regions(color_img, text_blocks)
-    masked_gray = cv2.cvtColor(masked_color, cv2.COLOR_BGR2GRAY)
-    cv2.imwrite("02_masked.png", masked_color)
-    walls = extract_walls(masked_gray)
-    edges = preprocess_for_lines(masked_gray)
-    combined = cv2.bitwise_or(
-    edges,
-    walls
-    )
-    cv2.imwrite(
-    "05_combined.png",
-    combined
-    )
-# Geometry after text removal
-    # lines = detect_lines(masked_gray, masked_color)
-    lines = detect_lines(
-    masked_gray,
-    masked_color)
-    lines = merge_lines(lines)
-    rectangles = detect_rectangles(masked_gray)
-    combined_rectangles = detect_contours_from_combined(
-    combined
-    )
-    # # ── Detection Pipeline ──
-    # lines = detect_lines(gray_img, color_img)
-    # rectangles = detect_rectangles(gray_img)
-    # # circles = detect_circles(gray_img, color_img)
-    # text_blocks = detect_text_easyocr(color_img)
+        # OCR first
+        text_blocks = detect_text_easyocr(color_img)
 
-    all_shapes = lines + rectangles #+ combined_rectangles # + circles
+        # Remove text from image
+        masked_color = mask_text_regions(color_img, text_blocks)
+        masked_gray = cv2.cvtColor(masked_color, cv2.COLOR_BGR2GRAY)
+        cv2.imwrite("02_masked.png", masked_color)
+        walls = extract_walls(masked_gray)
+        edges = preprocess_for_lines(masked_gray)
+        combined = cv2.bitwise_or(edges, walls)
+        cv2.imwrite("05_combined.png", combined)
 
-    svg_string = generate_svg(all_shapes, text_blocks, width, height)
+        # Geometry after text removal
+        lines = detect_lines(masked_gray, masked_color)
+        lines = merge_lines(lines)
+        rectangles = detect_rectangles(masked_gray)
 
-    return DetectionResult(
-        shapes=all_shapes,
-        text_blocks=text_blocks,
-        svg=svg_string,
-        original_width=width,
-        original_height=height
-    )
+        all_shapes = lines + rectangles
+
+        svg_string = generate_svg(all_shapes, text_blocks, width, height)
+
+        return DetectionResult(
+            shapes=all_shapes,
+            text_blocks=text_blocks,
+            svg=svg_string,
+            original_width=width,
+            original_height=height
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Digitization failed: {str(e)}")
 
 
 @app.get("/api/health")
