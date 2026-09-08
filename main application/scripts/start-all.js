@@ -7,6 +7,7 @@
 
 const { spawn, spawnSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 const ROOT = path.resolve(__dirname, '..', '..'); // .../Geographic-Information-System
 const MAIN_APP = path.resolve(__dirname, '..'); // .../main application
@@ -169,16 +170,28 @@ function prefixed(name, color, chunk) {
 }
 
 function launch(service) {
+  if (!fs.existsSync(service.cwd)) {
+    prefixed(service.name, service.color || 'gray', `${COLORS.gray}Directory "${service.cwd}" not found, skipping.${COLORS.reset}`);
+    return null;
+  }
   const useShell = service.shell !== false;
-  const child = spawn(service.cmd, service.args, {
+  const command = (isWin && service.cmd === 'npm') ? 'npm.cmd' : service.cmd;
+  const sysRoot = process.env.SystemRoot || process.env.SYSTEMROOT || 'C:\\Windows';
+  const comSpec = process.env.ComSpec || process.env.COMSPEC || path.join(sysRoot, 'System32', 'cmd.exe');
+
+  const child = spawn(command, service.args, {
     cwd: service.cwd,
     shell: useShell,
-    env: process.env,
+    env: { ...process.env, ComSpec: comSpec, COMSPEC: comSpec },
   });
   child.pid && children.push(child);
 
-  child.stdout.on('data', (d) => prefixed(service.name, service.color, d));
-  child.stderr.on('data', (d) => prefixed(service.name, service.color, d));
+  child.on('error', (err) => {
+    prefixed(service.name, 'red', `[ERROR] Could not start service: ${err.message}`);
+  });
+
+  if (child.stdout) child.stdout.on('data', (d) => prefixed(service.name, service.color, d));
+  if (child.stderr) child.stderr.on('data', (d) => prefixed(service.name, service.color, d));
   child.on('exit', (code) => {
     prefixed(service.name, service.color, `${COLORS.gray}process exited (code ${code})${COLORS.reset}`);
   });

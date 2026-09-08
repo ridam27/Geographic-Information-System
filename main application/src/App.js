@@ -31,20 +31,43 @@ function Topbar() {
 
 function Console() {
   const { isAdmin, allowedModules, getSsoLaunchUrl } = useAuth();
-  const [activeId, setActiveId] = useState(null);
+  const [activeId, setActiveId] = useState(() => {
+    try {
+      const saved = localStorage.getItem("gis_active_module");
+      if (saved && (saved === "admin" || MODULES.some((m) => m.id === saved))) {
+        return saved;
+      }
+    } catch (e) {}
+    return null;
+  });
   const [collapsed, setCollapsed] = useState(true);
   const [ssoSrc, setSsoSrc] = useState(null);
   const [ssoError, setSsoError] = useState(null);
 
-  // Pick a sensible default view once we know what this account can see:
-  // admins land on the first module, sub-users land on their own first
-  // assigned module (never a module they don't have access to).
+  const handleSelectModule = (id) => {
+    setActiveId(id);
+    try {
+      if (id) {
+        localStorage.setItem("gis_active_module", id);
+      }
+    } catch (e) {}
+  };
+
   useEffect(() => {
-    if (activeId !== null) return;
+    if (activeId !== null) {
+      if (activeId === "admin" && !isAdmin) {
+        const fallback = allowedModules[0] || MODULES[0]?.id;
+        handleSelectModule(fallback);
+      } else if (activeId !== "admin" && !isAdmin && allowedModules.length && !allowedModules.includes(activeId)) {
+        handleSelectModule(allowedModules[0]);
+      }
+      return;
+    }
+
     if (isAdmin) {
-      setActiveId(MODULES[0]?.id || "admin");
+      handleSelectModule(MODULES[0]?.id || "admin");
     } else if (allowedModules.length) {
-      setActiveId(allowedModules[0]);
+      handleSelectModule(allowedModules[0]);
     }
   }, [activeId, isAdmin, allowedModules]);
 
@@ -89,7 +112,7 @@ function Console() {
     <div className="app">
       <Sidebar
         activeId={activeId}
-        onSelect={setActiveId}
+        onSelect={handleSelectModule}
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}
       />

@@ -33,9 +33,12 @@ const PYTHON_PROJECTS = [
   },
 ];
 
+const isWin = process.platform === 'win32';
+
 function run(cmd, args, cwd, label) {
+  const command = (isWin && cmd === 'npm') ? 'npm.cmd' : cmd;
   console.log(`\n\x1b[36m==> ${label}\x1b[0m`);
-  const result = spawnSync(cmd, args, { cwd, stdio: 'inherit', shell: true });
+  const result = spawnSync(command, args, { cwd, stdio: 'inherit', shell: true });
   if (result.status !== 0) {
     console.error(`\x1b[31m✗ ${label} failed (exit ${result.status})\x1b[0m`);
     return false;
