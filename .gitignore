@@ -16,6 +16,7 @@ vendor/
 .env
 .env.local
 .env.*.local
+all_env_files.zip
 
 # Logs
 *.log
