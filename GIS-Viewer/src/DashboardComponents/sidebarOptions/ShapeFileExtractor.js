@@ -5,6 +5,7 @@ import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility
 import "leaflet-defaulticon-compatibility";
 import ShapeFile from './ShapeFile';
 import { TileProviders } from './TileProviders';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import './MyMap.css'
 
 const MyMap = () => {
@@ -14,8 +15,8 @@ const MyMap = () => {
   const [geodata, setGeodata] = useState(null);
   const [map, setMap] = useState(null);
   const [position, setPosition] = useState(map ? map.getCenter() : { lat: center[0], lng: center[1] });
-  const [showMapLayers, setShowMapLayers] = useState(false);  // State to toggle the dropdown visibility
-  const [selectedLayers, setSelectedLayers] = useState({
+  const [showMapLayers, setShowMapLayers] = usePersistentState('shapefile-show-map-layers', false);  // State to toggle the dropdown visibility
+  const [selectedLayers, setSelectedLayers] = usePersistentState('shapefile-selected-layers', {
     shrimpLine: false,
     mileLine: false,
     ldhClassification: false,
@@ -425,7 +426,7 @@ const MyMap = () => {
     <>
       {map ? <DisplayPosition map={map} position={position} setPosition={setPosition} /> : null}
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', padding: '20px', marginTop: '13vh' }} className="upload-shapefile">
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', padding: '20px', marginTop: 0 }} className="upload-shapefile">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
           <label style={{ marginRight: '20px', fontSize: '16px' }}>Upload ShapeFile(.zip):</label>
           <input 

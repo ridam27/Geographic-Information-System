@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet'; // Import L from Leaflet
+import { usePersistentState } from '../../hooks/usePersistentState';
 import './Location.css';
 
 const MapPage = () => {
-  const [lat, setLat] = useState('');
-  const [lng, setLng] = useState('');
-  const [position, setPosition] = useState([21.1498, 79.0806]); // Default location (Nagpur, India)
-  const [zoom, setZoom] = useState(5); // Default zoom level
+  const [lat, setLat] = usePersistentState('location-lat', '');
+  const [lng, setLng] = usePersistentState('location-lng', '');
+  const [position, setPosition] = usePersistentState('location-position', [21.1498, 79.0806]); // Default location (Nagpur, India)
+  const [zoom, setZoom] = usePersistentState('location-zoom', 5); // Default zoom level
 
   // Default marker icon
   const defaultIcon = new L.Icon({
@@ -39,7 +39,7 @@ const MapPage = () => {
   };
 
   return (
-    <div style={{ marginTop:'11vh', padding: '20px' }} className="map-container">
+    <div style={{ marginTop: '0', padding: '0' }} className="map-container">
       <div className="input-container">
         <input
           type="text"

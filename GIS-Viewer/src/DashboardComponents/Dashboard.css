@@ -1,12 +1,18 @@
-/* Sidebar toggle button container - hidden as Header hamburger button handles sidebar toggle */
+/* Sidebar toggle button container */
 .sidebar-toggle-container {
-  display: none !important;
+  display: flex;
+  align-items: center;
+  position: fixed;
+  top: 10px; 
+  left: 20px; 
+  z-index: 1300;
+  transition: transform 0.3s ease-in-out; 
 }
 
 /* Sidebar toggle button */
 .sidebar-toggle-button {
-  background-color: #e0e0e0 !important;
-  color: #37474f;
+  background-color: #e0e0e0 !important; 
+  color: #37474f; 
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
   border-radius: 50%;
   padding: 12px;
@@ -14,15 +20,15 @@
 }
 
 .sidebar-toggle-button:hover {
-  background-color: #f5f5f5;
-  color: #546e7a;
+  background-color: #f5f5f5; 
+  color: #546e7a; 
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   transform: rotate(180deg);
 }
 
 /* Sidebar drawer */
 .sidebar-drawer {
-  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
 }
 
 /* Sidebar content */
@@ -30,13 +36,13 @@
   width: 250px;
   height: 100%;
   background-color: #e4f0ff;
-  color: #263238;
+  color: #263238; 
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 20px 15px;
   box-sizing: border-box;
-  animation: slideIn 0.4s ease-out;
+  animation: slideIn 0.4s ease-out; 
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
@@ -61,10 +67,10 @@
 
 /* Sidebar option item */
 .sidebar-option-item {
-  color: #546e7a;
+  color: #546e7a; 
   padding: 12px 15px;
-  border-radius: 8px;
-  transition: all 0.2s ease-in-out;
+  border-radius: 8px; 
+  transition: all 0.2s ease-in-out; 
   display: flex;
   align-items: center;
   margin-bottom: 5px;
@@ -73,18 +79,18 @@
 .sidebar-option-item:hover {
   background-color: #eceff1;
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-  padding-left: 20px;
-  transform: scale(1.02);
+  padding-left: 20px; 
+  transform: scale(1.02); 
 }
 
-.sidebar-option-item:active {
-  transform: scale(0.98);
-  background-color: #d8d8d8;
+.sidebar-option-item:active { 
+  transform: scale(0.98); 
+  background-color: #d8d8d8; 
 }
 
 .sidebar-option-item.selected {
-  background-color: #b0bec5;
-  color: #263238;
+  background-color: #b0bec5; 
+  color: #263238; 
   font-weight: 600;
 }
 
@@ -109,8 +115,7 @@
 .floating-icons-container {
   position: fixed;
   top: 50%;
-  left: -40px;
-  /* Start offscreen */
+  left: -40px; /* Start offscreen */
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
@@ -141,7 +146,7 @@
   z-index: 1199;
 }
 
-.floating-icons-trigger:hover+.floating-icons-container,
+.floating-icons-trigger:hover + .floating-icons-container,
 .floating-icons-container:hover {
   left: 0;
 }
@@ -185,7 +190,7 @@
   padding: 0;
   transition: margin-left 0.3s ease-in-out;
   overflow: hidden;
-  animation: fadeInUp 0.8s ease-out;
+  animation: fadeInUp 0.8s ease-out; 
 }
 
 /* Welcome image animation */
@@ -207,7 +212,6 @@
     transform: translateX(-100%);
     opacity: 0;
   }
-
   100% {
     transform: translateX(0);
     opacity: 1;
@@ -218,7 +222,6 @@
   0% {
     opacity: 0;
   }
-
   100% {
     opacity: 1;
   }
@@ -229,7 +232,6 @@
     opacity: 0;
     transform: translateY(20px);
   }
-
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -239,13 +241,11 @@
 @keyframes slideInLeft {
   0% {
     transform: translateX(-50px) translateY(-50%);
-    opacity: 0;
+    opacity: 0; 
   }
-
   30% {
-    opacity: 0.5;
+    opacity: 0.5; 
   }
-
   100% {
     transform: translateX(0) translateY(-50%);
     opacity: 1;
@@ -257,7 +257,6 @@
     transform: scale(0.9);
     opacity: 0;
   }
-
   100% {
     transform: scale(1);
     opacity: 1;
@@ -269,11 +268,9 @@
   0% {
     box-shadow: 0 0 0 0 rgba(84, 110, 122, 0.7);
   }
-
   70% {
     box-shadow: 0 0 0 8px rgba(84, 110, 122, 0);
   }
-
   100% {
     box-shadow: 0 0 0 0 rgba(84, 110, 122, 0);
   }
@@ -284,7 +281,7 @@
   .floating-icons-container {
     padding: 10px 2px;
   }
-
+  
   .floating-icon-button {
     padding: 8px;
     margin: 3px 0;

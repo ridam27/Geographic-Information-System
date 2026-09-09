@@ -196,3 +196,19 @@
   border-radius: 4px;
   cursor: pointer;
 }
+
+.kmz-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ccc;
+  border-top-color: #2196F3;
+  border-radius: 50%;
+  display: inline-block;
+  animation: kmz-spin 0.8s linear infinite;
+}
+
+@keyframes kmz-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -44,14 +44,15 @@ function App() {
         onLoaderFinished={() => setProgress(0)}
       />
       <Routes>
-        <Route path="/" element={<DashboardApp />} />
-        <Route path="/login" element={!isAuthenticated ? <LoginPage handleButtonClick={handleButtonClick} /> : <Navigate to="/" replace />} />
+        <Route path="/" element={<HeroSection handleButtonClick={handleButtonClick} />} />
+        <Route path="/login" element={!isAuthenticated ? <LoginPage handleButtonClick={handleButtonClick} /> : <Navigate to="/DashboardApp" />} />
         <Route path="/signup" element={<SignupPage handleButtonClick={handleButtonClick} />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage handleButtonClick={handleButtonClick} />} />
-        <Route path="/DashboardApp" element={<DashboardApp />} />
-        <Route path="/UserProfile" element={isAuthenticated ? <UserProfile /> : <Navigate to="/" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/DashboardApp" element={isAuthenticated ? <DashboardApp /> : <Navigate to="/login" />} />
+        <Route path="/UserProfile" element={isAuthenticated ? <UserProfile /> : <Navigate to="/login" />} />
       </Routes>
+      <CardContainer />
+      <Footer />
     </Router>
   );
 }

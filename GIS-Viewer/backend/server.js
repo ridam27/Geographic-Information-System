@@ -1,13 +1,10 @@
 // backend/server.js
 
 const path = require('path');
-const fs = require('fs');
 // Must run before any local module is required — ssoRoutes.js (and others)
 // read process.env into top-level consts at require-time, so loading env
 // vars after those requires would leave them permanently undefined.
-const backendEnv = path.join(__dirname, '.env');
-const rootEnv = path.join(__dirname, '../.env');
-require('dotenv').config({ path: fs.existsSync(backendEnv) ? backendEnv : rootEnv });
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -18,6 +15,7 @@ const MongoStore = require('connect-mongo');
 const userRoutes = require('./routes/userRoutes');
 const fileRoutes = require('./routes/fileRoutes');
 const ssoRoutes = require('./routes/ssoRoutes');
+const gisFileRoutes = require('./routes/gisFileRoutes');
 
 const app = express();
 
@@ -28,7 +26,7 @@ const mongoKmlURI = process.env.MONGODB_KML || mongoPrimaryURI;
 const isProduction = process.env.NODE_ENV === 'production';
 const sessionSecret = process.env.SESSION_SECRET || process.env.SECREAT_KEY || 'dev-session-secret';
 const allowedOrigins = [
-  'http://localhost:3005',
+  'http://localhost:5000',
   'http://localhost:3000',
   ...(process.env.FRONTEND_URL || '').split(',').map((origin) => origin.trim()).filter(Boolean),
 ];
@@ -39,12 +37,10 @@ app.set('trust proxy', 1);
 // For development, configure CORS to allow credentials from your React dev server
 app.use(cors({
   origin(origin, callback) {
-    if (!origin) return callback(null, true);
-    const clean = origin.trim().replace(/\/+$/, '');
-    if (allowedOrigins.includes(clean) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(clean) || !isProduction) {
+    if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    return callback(null, false);
+    return callback(new Error(`CORS blocked origin: ${origin}`));
   },
   credentials: true,
 }));
@@ -85,21 +81,14 @@ const proxyToPotholeApi = async (req, res) => {
 };
 
 // Session Middleware
-let store;
-try {
-  store = MongoStore.create({
-    mongoUrl: mongoSessionURI,
-    collectionName: 'sessions',
-  });
-} catch (e) {
-  console.warn('⚠️ MongoStore creation warning, using MemoryStore for sessions.');
-}
-
 app.use(session({
   secret: sessionSecret,
   resave: false,
-  saveUninitialized: false,
-  store: store,
+  saveUninitialized: false, // Changed to false for better practice
+  store: MongoStore.create({
+    mongoUrl: mongoSessionURI,
+    collectionName: 'sessions',
+  }),
   cookie: {
     maxAge: 1000 * 60 * 60 * 24, // 1 day
     sameSite: process.env.SESSION_COOKIE_SAMESITE || 'lax',
@@ -117,83 +106,44 @@ app.use('/api/users', userRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/dashboard/users', userRoutes);
 app.use('/api/dashboard/files', fileRoutes);
+app.use('/api/gis-files', gisFileRoutes); // Persistent KMZ/TIF/KML storage (survives refresh)
 app.use('/sso', ssoRoutes); // Master Auth Server SSO handoff (Authentication Source 1)
 app.use(['/api/track', '/api/get_track', '/api/save_csv'], proxyToPotholeApi);
 
 // =======================================================
 //  SERVE REACT APP
 // =======================================================
+// Runs in production, and also in local dev when a build/ folder exists —
+// serving the SPA from the same origin as this API keeps the SSO session
+// cookie first-party (SameSite=Lax) instead of needing cross-origin cookies
+// between a separate CRA dev server and this backend.
 const buildPath = path.join(__dirname, '../build');
-const publicPath = path.join(__dirname, '../public');
-const buildIndex = path.join(buildPath, 'index.html');
-const publicIndex = path.join(publicPath, 'index.html');
+if (isProduction || require('fs').existsSync(buildPath)) {
+  app.use(express.static(buildPath));
 
-app.use((req, res, next) => {
-  if (require('fs').existsSync(buildPath)) {
-    return express.static(buildPath)(req, res, next);
-  }
-  if (require('fs').existsSync(publicPath)) {
-    return express.static(publicPath)(req, res, next);
-  }
-  next();
-});
-
-app.get('*', (req, res) => {
-  if (require('fs').existsSync(buildIndex)) {
-    return res.sendFile(buildIndex, (err) => {
-      if (err && !res.headersSent) {
-        if (require('fs').existsSync(publicIndex)) {
-          let html = require('fs').readFileSync(publicIndex, 'utf8');
-          html = html.replace(/%PUBLIC_URL%\//g, './').replace(/%PUBLIC_URL%/g, '.');
-          res.setHeader('Content-Type', 'text/html');
-          res.send(html);
-        } else {
-          res.status(200).send('GIS-Viewer application page.');
-        }
-      }
-    });
-  }
-
-  if (require('fs').existsSync(publicIndex)) {
-    let html = require('fs').readFileSync(publicIndex, 'utf8');
-    html = html.replace(/%PUBLIC_URL%\//g, './').replace(/%PUBLIC_URL%/g, '.');
-    res.setHeader('Content-Type', 'text/html');
-    return res.send(html);
-  }
-
-  res.send('GIS-Viewer Backend is running.');
-});
+  // Catch-all route to serve index.html for any request that doesn't match an API route
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(buildPath, 'index.html'));
+  });
+}
 
 // MongoDB Connections
-async function connectMongoDB() {
-  try {
-    await mongoose.connect(mongoPrimaryURI, {
-      serverSelectionTimeoutMS: 3000,
-      connectTimeoutMS: 3000,
-    });
-    console.log('Primary MongoDB connected');
-  } catch (err) {
-    console.warn(`⚠️ Primary MongoDB connection failed (${err.message}). Running in fallback mode.`);
-  }
-}
-connectMongoDB();
-
-let kmlDbConnection = null;
-try {
-  kmlDbConnection = mongoose.createConnection(mongoKmlURI, {
-    serverSelectionTimeoutMS: 3000,
+mongoose.connect(mongoPrimaryURI)
+  .then(() => console.log('Primary MongoDB connected'))
+  .catch((err) => {
+    console.error('Failed to connect to Primary MongoDB:', err.message);
+    process.exit(1);
   });
-  kmlDbConnection
-    .once('open', () => console.log('KML MongoDB connected'))
-    .on('error', (err) => console.warn('Failed to connect to KML MongoDB:', err.message));
-} catch (e) {
-  console.warn('KML MongoDB connection error:', e.message);
-}
+
+const kmlDbConnection = mongoose.createConnection(mongoKmlURI);
+kmlDbConnection
+  .once('open', () => console.log('KML MongoDB connected'))
+  .on('error', (err) => console.error('Failed to connect to KML MongoDB:', err.message));
 
 module.exports = { kmlDbConnection };
 
 // Start the server
-const PORT = process.env.PORT || 4005;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

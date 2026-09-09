@@ -13,9 +13,6 @@ RUN composer install --no-dev --prefer-dist --no-interaction --optimize-autoload
 
 COPY . .
 
-RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
-    && sed -i 's/error_reporting = .*/error_reporting = E_ALL \& ~E_DEPRECATED \& ~E_USER_DEPRECATED/' "$PHP_INI_DIR/php.ini"
-
 EXPOSE 8080 8090
 
 CMD ["sh", "-c", "php -S 0.0.0.0:8080 -t public & exec php bin/ws_server.php"]

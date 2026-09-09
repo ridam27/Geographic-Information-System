@@ -2,7 +2,6 @@
   "name": "db",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://localhost:4005",
   "engines": {
     "node": "20.x"
   },

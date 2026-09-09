@@ -9,7 +9,6 @@
 
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
 const User = require('../models/User');
 
 const router = express.Router();
@@ -63,30 +62,21 @@ router.get('/callback', async (req, res) => {
 
     // Find-or-create a local User record for this federated identity, then
     // establish a normal local session — identical shape to userRoutes.js.
-    let user = null;
-    try {
-      if (mongoose.connection.readyState === 1) {
-        user = await User.findOne({ email: identity.email });
-        if (!user) {
-          const bcrypt = require('bcryptjs');
-          const randomPassword = require('crypto').randomBytes(24).toString('hex');
-          user = new User({
-            username: identity.name,
-            email: identity.email,
-            password: await bcrypt.hash(randomPassword, 10),
-          });
-          await user.save();
-        }
-      }
-    } catch (dbErr) {
-      console.warn('[sso/callback] Mongo user lookup error, falling back to memory session identity:', dbErr.message);
+    let user = await User.findOne({ email: identity.email });
+    if (!user) {
+      // Federated users get a random, never-used local password placeholder;
+      // they can only ever sign in via SSO or by using "forgot password".
+      const bcrypt = require('bcryptjs');
+      const randomPassword = require('crypto').randomBytes(24).toString('hex');
+      user = new User({
+        username: identity.name,
+        email: identity.email,
+        password: await bcrypt.hash(randomPassword, 10),
+      });
+      await user.save();
     }
 
-    req.session.user = {
-      _id: user ? user._id : `sso-${identity.id}`,
-      username: user ? user.username : identity.name,
-      email: user ? user.email : identity.email,
-    };
+    req.session.user = { _id: user._id, username: user.username, email: user.email };
 
     return res.redirect(FRONTEND_HOME);
   } catch (err) {

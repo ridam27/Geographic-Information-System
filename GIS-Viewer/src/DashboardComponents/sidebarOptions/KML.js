@@ -2,21 +2,33 @@ import React, { useState, useRef } from 'react';
 import MapComponent from './MapComponent';
 import FileUploader from './FileUploader';
 import ErrorBoundary from './ErrorBoundary';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import tokml from "tokml";
+import './KML.css';
 
 const KML = () => {
-  const [kmlData, setKmlData] = useState(null);
+  // Text KML content is small, so it's safe to persist across refreshes.
+  const [kmlData, setKmlData] = usePersistentState('kml-data', null);
   const [imageUrl, setImageUrl] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef(null);
   const drawnItemsRef = useRef(null);
 
   // Get file upload functionality from FileUploader
-  const { handleFileChange } = FileUploader({
+  const { handleFileChange: baseHandleFileChange } = FileUploader({
     onFileUpload: (data) => {
       setKmlData(data);
       setImageUrl(null); // Reset image URL if needed
+      // Loading continues until MapComponent finishes parsing the KML.
     }
   });
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setIsLoading(true);
+    }
+    baseHandleFileChange(e);
+  };
 
   const triggerFileInput = () => {
     fileInputRef.current.click();
@@ -58,8 +70,31 @@ const KML = () => {
 
   return (
     <ErrorBoundary>
-      <div style={{ marginTop: '13vh', padding: '20px' }}>
-        <h1>KML File Uploader and Map Viewer</h1>
+      <div style={{ marginTop: 0, padding: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap', gap: '16px', marginBottom: '20px' }}>
+          <h1 style={{ margin: 0, whiteSpace: 'nowrap' }}>KML File Uploader and Map Viewer</h1>
+
+          {/* Download button */}
+          {drawnItemsRef.current && (
+            <button
+              onClick={handleDownloadKML}
+              style={{
+                flexShrink: 0,
+                alignSelf: 'center',
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                padding: '10px 20px',
+                borderRadius: '5px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Download KML
+            </button>
+          )}
+        </div>
 
         {/* Styled file upload area */}
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
@@ -91,31 +126,31 @@ const KML = () => {
           </div>
         </div>
 
-        {/* Download button */}
-        {drawnItemsRef.current && (
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <button
-              onClick={handleDownloadKML}
+        <div style={{ marginTop: '20px', height: '500px', position: 'relative' }}>
+          {isLoading && (
+            <div
               style={{
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                padding: '10px 20px',
-                borderRadius: '5px',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 'bold'
+                position: 'absolute',
+                inset: 0,
+                zIndex: 1000,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                backgroundColor: 'rgba(255,255,255,0.75)',
               }}
             >
-              Download KML
-            </button>
-          </div>
-        )}
-
-        <div style={{ marginTop: '20px', height: '500px' }}>
+              <div className="kml-spinner" />
+              <span style={{ color: '#2196f3', fontWeight: 'bold' }}>Loading KML…</span>
+            </div>
+          )}
           <MapComponent
             kmlData={kmlData}
             imageUrl={imageUrl}
             setDrawnItemsRef={(ref) => drawnItemsRef.current = ref}
+            onLoadStart={() => setIsLoading(true)}
+            onLoadEnd={() => setIsLoading(false)}
           />
         </div>
       </div>

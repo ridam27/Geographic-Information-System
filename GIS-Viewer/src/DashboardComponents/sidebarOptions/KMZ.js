@@ -1,9 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import JSZip from 'jszip';
 import proj4 from 'proj4';
+import { usePersistentState } from '../../hooks/usePersistentState';
+import { uploadGisFile, fetchGisFile } from '../../services/gisFileApi';
+import './KMZ.css';
 
 const UploadIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -33,8 +36,7 @@ const LayersIcon = () => (
 const styles = {
   container: {
     display: 'flex',
-    height: '100vh',
-    top: '90px',
+    height: '100%',
     position: 'relative',
     fontFamily: 'Inter, system-ui, sans-serif',
   },
@@ -269,8 +271,6 @@ const detectCoordinateSystem = (xmlDoc) => {
 
 // Function to load image from various possible locations in ZIP
 const loadImageFromZip = async (zip, imagePath, baseDir = '') => {
-  console.log('Loading image:', imagePath, 'from baseDir:', baseDir);
-  
   const possiblePaths = [
     imagePath,
     `${baseDir}/${imagePath}`,
@@ -297,12 +297,13 @@ const loadImageFromZip = async (zip, imagePath, baseDir = '') => {
   return null;
 };
 
-// Function to load and parse KML files recursively
+// Function to load and parse KML files recursively.
+// The XML is parsed once here and the resulting xmlDoc is carried along with
+// the result, so callers (GroundOverlay processing) don't have to re-parse
+// the same KML text a second time.
 const loadKmlFiles = async (zip, filePath, baseDir = '', loadedFiles = new Set()) => {
-  console.log('Loading KML:', filePath, 'from baseDir:', baseDir);
-  
   const normalizedPath = normalizePath(baseDir, filePath);
-  
+
   if (loadedFiles.has(normalizedPath)) {
     return [];
   }
@@ -325,11 +326,11 @@ const loadKmlFiles = async (zip, filePath, baseDir = '', loadedFiles = new Set()
     xmlDoc.getElementsByTagNameNS("http://www.opengis.net/kml/2.2", "NetworkLink") ||
     xmlDoc.getElementsByTagName("NetworkLink")
   );
-  
+
   const linkedKmlPromises = networkLinks.map(async (link) => {
     const href = link.querySelector('href')?.textContent ||
                 link.getElementsByTagNameNS("http://www.opengis.net/kml/2.2", "href")[0]?.textContent;
-    
+
     if (href) {
       return loadKmlFiles(zip, href, currentDir, loadedFiles);
     }
@@ -337,9 +338,10 @@ const loadKmlFiles = async (zip, filePath, baseDir = '', loadedFiles = new Set()
   });
 
   const linkedResults = await Promise.all(linkedKmlPromises);
-  
+
   return [{
     kmlText,
+    xmlDoc,
     basePath: currentDir,
     coordSystem: detectCoordinateSystem(xmlDoc)
   }].concat(linkedResults.flat());
@@ -452,13 +454,13 @@ const KmlMap = ({ kmlContent, isActive, zip, baseDir }) => {
         const xmlDoc = parser.parseFromString(kmlContent, 'application/xml');
         kmlFiles = [{
           kmlText: kmlContent,
+          xmlDoc,
           basePath: '',
           coordSystem: detectCoordinateSystem(xmlDoc)
         }];
       }
 
-      const allOverlayPromises = kmlFiles.flatMap(({ kmlText, basePath, coordSystem }) => {
-        const xmlDoc = new DOMParser().parseFromString(kmlText, 'application/xml');
+      const allOverlayPromises = kmlFiles.flatMap(({ xmlDoc, basePath, coordSystem }) => {
         const groundOverlays = Array.from(
           xmlDoc.getElementsByTagNameNS("http://www.opengis.net/kml/2.2", "GroundOverlay") ||
           xmlDoc.getElementsByTagName("GroundOverlay")
@@ -506,7 +508,7 @@ const KmlMap = ({ kmlContent, isActive, zip, baseDir }) => {
 };
 
 // LayerItem Component
-const LayerItem = ({ name, isActive, fileUploaded, onToggle, onFileUpload }) => {
+const LayerItem = ({ name, isActive, fileUploaded, isLoading, onToggle, onFileUpload }) => {
   const [hover, setHover] = useState(false);
   const fileInputRef = React.createRef();
 
@@ -564,14 +566,23 @@ const LayerItem = ({ name, isActive, fileUploaded, onToggle, onFileUpload }) => 
       
       {isActive && !fileUploaded && (
         <div>
-          <div 
+          <div
             style={{
               ...styles.uploadButton,
-              ...(hover ? styles.uploadButtonHover : {})
+              ...(hover ? styles.uploadButtonHover : {}),
+              ...(isLoading ? { cursor: 'wait', opacity: 0.7 } : {}),
             }}
-            onClick={handleFileInputClick}
+            onClick={isLoading ? undefined : handleFileInputClick}
           >
-            <span style={styles.iconWrapper}><UploadIcon /></span> Upload KML/KMZ File
+            {isLoading ? (
+              <>
+                <span className="kmz-spinner" /> Processing file…
+              </>
+            ) : (
+              <>
+                <span style={styles.iconWrapper}><UploadIcon /></span> Upload KML/KMZ File
+              </>
+            )}
           </div>
           <input
             ref={fileInputRef}
@@ -579,6 +590,7 @@ const LayerItem = ({ name, isActive, fileUploaded, onToggle, onFileUpload }) => 
             onChange={onFileUpload}
             accept=".kmz,.kml"
             style={styles.fileInput}
+            disabled={isLoading}
           />
         </div>
       )}
@@ -587,20 +599,35 @@ const LayerItem = ({ name, isActive, fileUploaded, onToggle, onFileUpload }) => 
 };
 // Main Map Component
 const Map = () => {
+  // `layers` holds the parsed-in-memory result (zip/kmlContent) and cannot
+  // survive a refresh on its own. `layersMeta` holds only small, string-safe
+  // data — the backend fileId for each layer's original upload plus the
+  // toggle state — and IS persisted, so it can drive re-fetching the file
+  // from the backend and re-running the exact same parse below.
   const [layers, setLayers] = useState({
     Orthophotos: { kmlContent: null, isActive: false, zip: null, baseDir: '', fileUploaded: false },
     DTM: { kmlContent: null, isActive: false, zip: null, baseDir: '', fileUploaded: false },
     DSM: { kmlContent: null, isActive: false, zip: null, baseDir: '', fileUploaded: false },
   });
-  const [activeTab, setActiveTab] = useState('upload'); // 'upload' or 'active'
+  const [layersMeta, setLayersMeta] = usePersistentState('kmz-layers-meta', {});
+  const [activeTab, setActiveTab] = usePersistentState('kmz-active-tab', 'upload'); // 'upload' or 'active'
+  const [loadingLayer, setLoadingLayer] = useState(null); // name of layer currently being processed
+  const restoreAttempted = useRef(false);
 
-  const handleFileUpload = async (e, layerName) => {
-    const file = e.target.files[0];
-    
+  // Shared parse path for both a freshly-picked file and a file fetched
+  // back from the backend on restore. `persist: false` is used for the
+  // restore path so we don't re-upload the file we just downloaded.
+  const processFile = async (file, layerName, { persist = true, isActive = true } = {}) => {
     if (!file || (!file.name.endsWith('.kmz') && !file.name.endsWith('.kml'))) {
-      alert('Please upload a valid KMZ or KML file.');
+      if (persist) alert('Please upload a valid KMZ or KML file.');
       return;
     }
+
+    setLoadingLayer(layerName);
+    // Kick the backend save off in parallel with the local parse below,
+    // rather than after it — for a large file this roughly halves the time
+    // the loading indicator has to stay up.
+    const uploadPromise = persist ? uploadGisFile(file) : null;
 
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -608,7 +635,7 @@ const Map = () => {
         if (file.name.endsWith('.kmz')) {
           const zip = await JSZip.loadAsync(event.target.result);
           const kmlFiles = await loadKmlFiles(zip, 'doc.kml');
-          
+
           if (kmlFiles.length === 0) {
             throw new Error('No valid KML files found in KMZ');
           }
@@ -617,7 +644,7 @@ const Map = () => {
             ...prev,
             [layerName]: {
               kmlContent: kmlFiles[0].kmlText,
-              isActive: true,
+              isActive,
               zip: zip,
               baseDir: kmlFiles[0].basePath,
               fileUploaded: true
@@ -630,21 +657,79 @@ const Map = () => {
             ...prev,
             [layerName]: {
               kmlContent: kmlContent,
-              isActive: true,
+              isActive,
               zip: null,
               baseDir: '',
               fileUploaded: true
             },
           }));
         }
+
+        if (persist) {
+          // Wait for the backend save to actually finish (not just the
+          // local parse) before clearing the loading state below — this is
+          // what makes it safe for the user to refresh once the spinner
+          // stops, instead of the save silently still being in flight.
+          const result = await uploadPromise;
+          if (result) {
+            setLayersMeta(prev => ({
+              ...prev,
+              [layerName]: {
+                fileId: result.fileId,
+                originalName: result.originalName,
+                mimeType: file.type,
+                isActive: true,
+              },
+            }));
+          } else {
+            console.warn(
+              `Could not save "${layerName}" to the backend — it will need to be re-uploaded after a refresh.`
+            );
+          }
+        }
       } catch (error) {
         console.error('Error processing file:', error);
-        alert('Error loading file: ' + error.message);
+        if (persist) alert('Error loading file: ' + error.message);
+      } finally {
+        setLoadingLayer(null);
       }
     };
+    reader.onerror = () => setLoadingLayer(null);
 
     reader.readAsArrayBuffer(file);
   };
+
+  const handleFileUpload = (e, layerName) => {
+    processFile(e.target.files[0], layerName);
+  };
+
+  // On first mount, restore any layers that have a saved fileId by
+  // re-fetching the original file from the backend and re-running the same
+  // parse used for a fresh upload.
+  useEffect(() => {
+    if (restoreAttempted.current) return;
+    restoreAttempted.current = true;
+
+    Object.entries(layersMeta).forEach(([layerName, meta]) => {
+      if (!meta?.fileId) return;
+      fetchGisFile(meta.fileId).then((blob) => {
+        if (blob) {
+          const restoredFile = new File([blob], meta.originalName, {
+            type: meta.mimeType || blob.type,
+          });
+          processFile(restoredFile, layerName, { persist: false, isActive: meta.isActive !== false });
+        } else {
+          // Backend copy is gone/unreachable — drop the stale reference.
+          setLayersMeta(prev => {
+            const next = { ...prev };
+            delete next[layerName];
+            return next;
+          });
+        }
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleLayer = (layerName) => {
     setLayers(prev => ({
@@ -654,6 +739,11 @@ const Map = () => {
         isActive: !prev[layerName].isActive,
       },
     }));
+    setLayersMeta(prev => (
+      prev[layerName]
+        ? { ...prev, [layerName]: { ...prev[layerName], isActive: !prev[layerName].isActive } }
+        : prev
+    ));
   };
 
   // Count active layers
@@ -715,6 +805,7 @@ const Map = () => {
                 name={layerName}
                 isActive={layers[layerName].isActive}
                 fileUploaded={layers[layerName].fileUploaded}
+                isLoading={loadingLayer === layerName}
                 onToggle={() => toggleLayer(layerName)}
                 onFileUpload={(e) => handleFileUpload(e, layerName)}
               />
@@ -793,9 +884,9 @@ const Map = () => {
 // Main App Component
 const KMZViewer = () => {
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+    <div style={{ position: 'relative', width: '100%', height: 'calc(100vh - 64px)' }}>
       <Map />
-     
+
     </div>
   );
 };

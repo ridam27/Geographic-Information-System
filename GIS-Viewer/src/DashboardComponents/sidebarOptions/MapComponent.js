@@ -11,32 +11,40 @@ import "leaflet-draw/dist/leaflet.draw.css";
 import omnivore from "leaflet-omnivore";
 import tokml from "tokml";
 
-const KmlLayer = ({ kmlData }) => {
+const KmlLayer = ({ kmlData, onLoadStart, onLoadEnd }) => {
   const map = useMap();
 
   useEffect(() => {
     if (kmlData) {
-      try {
-        const kmlLayer = omnivore.kml.parse(kmlData);
-        if (kmlLayer) {
-          kmlLayer.addTo(map);
-          map.fitBounds(kmlLayer.getBounds());
-        } else {
-          console.warn("Invalid KML data.");
-          map.setView([20.5937, 78.9629], 5);
-          alert("The KML file does not contain valid data.");
+      onLoadStart?.();
+      // Yield to the browser first so the loading spinner actually paints
+      // before the (synchronous) KML parse blocks the main thread.
+      const timer = setTimeout(() => {
+        try {
+          const kmlLayer = omnivore.kml.parse(kmlData);
+          if (kmlLayer) {
+            kmlLayer.addTo(map);
+            map.fitBounds(kmlLayer.getBounds());
+          } else {
+            console.warn("Invalid KML data.");
+            map.setView([20.5937, 78.9629], 5);
+            alert("The KML file does not contain valid data.");
+          }
+        } catch (error) {
+          console.error("Error loading KML Layer:", error);
+          alert("Error processing KML file.");
+        } finally {
+          onLoadEnd?.();
         }
-      } catch (error) {
-        console.error("Error loading KML Layer:", error);
-        alert("Error processing KML file.");
-      }
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [kmlData, map]);
+  }, [kmlData, map, onLoadStart, onLoadEnd]);
 
   return null;
 };
 
-const MapComponent = ({ kmlData }) => {
+const MapComponent = ({ kmlData, onLoadStart, onLoadEnd }) => {
   const drawnItemsRef = useRef(null);
 
   const handleDrawCreated = (e) => {
@@ -91,7 +99,7 @@ const MapComponent = ({ kmlData }) => {
           cursor: "pointer",
           fontSize: "16px",
           position: "fixed",
-          top: "185px",
+          top: "162px",
           left: "50vw"
         }}
       >
@@ -108,7 +116,9 @@ const MapComponent = ({ kmlData }) => {
           subdomains={["mt0", "mt1", "mt2", "mt3"]}
         />
 
-        {kmlData && <KmlLayer kmlData={kmlData} />}
+        {kmlData && (
+          <KmlLayer kmlData={kmlData} onLoadStart={onLoadStart} onLoadEnd={onLoadEnd} />
+        )}
 
         <FeatureGroup ref={drawnItemsRef}>
           <EditControl

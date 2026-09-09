@@ -1,10 +1,4 @@
 services:
-  dashboard-redis:
-    image: redis:alpine
-    container_name: gis-dashboard-redis
-    ports:
-      - "6379:6379"
-
   dashboard-mysql:
     image: mysql:8.0
     container_name: gis-dashboard-mysql
@@ -24,6 +18,17 @@ services:
       timeout: 5s
       retries: 20
 
+  dashboard-redis:
+    image: redis:7
+    container_name: gis-dashboard-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   dashboard-backend:
     build: .
     container_name: gis-dashboard-backend
@@ -31,7 +36,7 @@ services:
       dashboard-mysql:
         condition: service_healthy
       dashboard-redis:
-        condition: service_started
+        condition: service_healthy
     environment:
       DB_HOST: dashboard-mysql
       DB_NAME: drone_db
@@ -40,9 +45,7 @@ services:
       REDIS_URI: redis://dashboard-redis:6379
       REDIS_GPS_CHANNEL: gps_updates
       WS_LISTEN_HOST: 0.0.0.0
-      WS_LISTEN_PORT: 4007
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      WS_LISTEN_PORT: 8090
     ports:
       - "3007:8080"
       - "4007:8090"

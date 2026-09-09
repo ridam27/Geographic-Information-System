@@ -1,7 +1,5 @@
 <?php
 
-error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
-
 require __DIR__ . '/../vendor/autoload.php';
 
 use App\Config;
@@ -64,33 +62,19 @@ $broadcaster = new GpsBroadcaster();
 // Async Redis client (clue/redis-react) so a blocking SUBSCRIBE call
 // never stalls the same event loop that serves WebSocket connections.
 $redisFactory = new RedisFactory($loop);
-
-function connectRedis($redisFactory, $redisUri, $redisChannel, $broadcaster, $loop)
-{
-    $redisFactory->createClient($redisUri)->then(
-        function ($client) use ($broadcaster, $redisChannel, $loop, $redisFactory, $redisUri) {
-            echo "✅ Connected & subscribed to Redis channel '{$redisChannel}'\n";
-            $client->subscribe($redisChannel);
-            $client->on('message', function ($channel, $payload) use ($broadcaster) {
-                $broadcaster->broadcast($payload);
-            });
-            $client->on('close', function () use ($loop, $redisFactory, $redisUri, $redisChannel, $broadcaster) {
-                echo "⚠️ Redis connection closed. Retrying in 5 seconds...\n";
-                $loop->addTimer(5, function () use ($redisFactory, $redisUri, $redisChannel, $broadcaster, $loop) {
-                    connectRedis($redisFactory, $redisUri, $redisChannel, $broadcaster, $loop);
-                });
-            });
-        },
-        function (\Exception $e) use ($loop, $redisFactory, $redisUri, $redisChannel, $broadcaster) {
-            fwrite(STDERR, "⚠️ Redis connection failed: {$e->getMessage()}. Retrying in 5s...\n");
-            $loop->addTimer(5, function () use ($redisFactory, $redisUri, $redisChannel, $broadcaster, $loop) {
-                connectRedis($redisFactory, $redisUri, $redisChannel, $broadcaster, $loop);
-            });
-        }
-    );
-}
-
-connectRedis($redisFactory, $redisUri, $redisChannel, $broadcaster, $loop);
+$redisFactory->createClient($redisUri)->then(
+    function ($client) use ($broadcaster, $redisChannel) {
+        $client->subscribe($redisChannel);
+        $client->on('message', function ($channel, $payload) use ($broadcaster) {
+            $broadcaster->broadcast($payload);
+        });
+        echo "Subscribed to Redis channel '{$redisChannel}'\n";
+    },
+    function (\Exception $e) {
+        fwrite(STDERR, "Redis connection failed: {$e->getMessage()}\n");
+        exit(1);
+    }
+);
 
 $socket = new SocketServer("{$listenHost}:{$listenPort}", [], $loop);
 $server = new IoServer(new HttpServer(new WsServer($broadcaster)), $socket, $loop);

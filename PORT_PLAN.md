@@ -80,30 +80,30 @@ Only expose necessary public ports in the AWS Security Group:
 ## 🛠️ Summary of Configuration Files Affected
 
 ### 1. `main application`
-- [`main application/scripts/start-all.js`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/main%20application/scripts/start-all.js): Service startup ports (`3001`, `3003`, `3004`)
-- [`main application/package.json`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/main%20application/package.json): React proxy targeting `http://localhost:4000`
-- [`main application/backend/.env`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/main%20application/backend/.env): `PORT=4000`, SSO Callbacks (`4002`, `4005`)
+- [`main application/scripts/start-all.js`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/main%20application/scripts/start-all.js): Service startup ports (`3001`, `3003`, `3004`)
+- [`main application/package.json`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/main%20application/package.json): React proxy targeting `http://localhost:4000`
+- [`main application/backend/.env`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/main%20application/backend/.env): `PORT=4000`, SSO Callbacks (`4002`, `4005`)
 
 ### 2. `GIS-3D`
-- [`GIS-3D/backend/server.js`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/GIS-3D/backend/server.js): Listen port `4001`, CORS origins (`3001` & AWS domain)
-- [`GIS-3D/frontend/js/*.js`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/GIS-3D/frontend/js/sewagePipeline.js): Update API target port to `4001`
+- [`GIS-3D/backend/server.js`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/GIS-3D/backend/server.js): Listen port `4001`, CORS origins (`3001` & AWS domain)
+- [`GIS-3D/frontend/js/*.js`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/GIS-3D/frontend/js/sewagePipeline.js): Update API target port to `4001`
 
 ### 3. `GIS-Survey`
-- [`GIS-Survey/survey-backend/.env`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/GIS-Survey/survey-backend/.env): `PORT=4002`, `MASTER_AUTH_URL=http://localhost:4000`
-- [`GIS-Survey/survey-frontend/.env.local`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/GIS-Survey/survey-frontend/.env.local): `REACT_APP_API_BASE_URL` set to AWS backend endpoint
+- [`GIS-Survey/survey-backend/.env`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/GIS-Survey/survey-backend/.env): `PORT=4002`, `MASTER_AUTH_URL=http://localhost:4000`
+- [`GIS-Survey/survey-frontend/.env.local`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/GIS-Survey/survey-frontend/.env.local): `REACT_APP_API_BASE_URL` set to AWS backend endpoint
 
 ### 4. `GIS-Wild-life`
-- [`GIS-Wild-life/backend/.env`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/GIS-Wild-life/backend/.env): `PORT=4003`
+- [`GIS-Wild-life/backend/.env`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/GIS-Wild-life/backend/.env): `PORT=4003`
 
 ### 5. `GIS-Construction`
-- [`GIS-Construction/backend/main.py`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/GIS-Construction/backend/main.py): FastAPI port `4004`, CORS origins (`3004` & AWS domain)
+- [`GIS-Construction/backend/main.py`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/GIS-Construction/backend/main.py): FastAPI port `4004`, CORS origins (`3004` & AWS domain)
 
 ### 6. `GIS-Viewer`
-- [`GIS-Viewer/.env`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/GIS-Viewer/.env): `PORT=4005`, `FRONTEND_URL`, `MASTER_AUTH_URL`
-
+- [`GIS-Viewer/.env`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/GIS-Viewer/.env): `PORT=4005`, `FRONTEND_URL`, `MASTER_AUTH_URL`
+F
 ### 7. `iot-server`
-- [`iot-server/server.js`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/iot-server/server.js): Server port `4006`
+- [`iot-server/server.js`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/iot-server/server.js): Server port `4006`
 
 ### 8. `dashboard`
-- [`dashboard/docker-compose.yml`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/dashboard/docker-compose.yml): Exposed ports `- "3007:8080"` and `- "4007:8090"`
-- [`dashboard/.env`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-cojag/dashboard/.env): `WS_LISTEN_PORT=4007`
+- [`dashboard/docker-compose.yml`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/dashboard/docker-compose.yml): Exposed ports `- "3007:8080"` and `- "4007:8090"`
+- [`dashboard/.env`](file:///c:/Users/HP/Desktop/Github/COJAG/gis-app-2.0/dashboard/.env): `WS_LISTEN_PORT=4007`

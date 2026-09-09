@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { Suspense, lazy } from "react";
 import {
   Box,
   Drawer,
@@ -10,8 +10,10 @@ import {
   Typography,
   useMediaQuery,
   Divider,
+  CircularProgress,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { usePersistentState, useScrollRestoration } from "../hooks/usePersistentState";
 import MenuIcon from "@mui/icons-material/Menu";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
@@ -20,32 +22,46 @@ import PublicIcon from "@mui/icons-material/Public";
 import ImageIcon from "@mui/icons-material/Image";
 import MovieIcon from "@mui/icons-material/Movie";
 
-// Import individual components
-import Location from "./sidebarOptions/Location";
-import ShapeFileExtractor from "./sidebarOptions/ShapeFileExtractor";
-import KML from "./sidebarOptions/KML";
-import KMZ from "./sidebarOptions/KMZ";
-import TIF from "./sidebarOptions/Tif";
+// Welcome is the default view, so it's loaded eagerly.
 import Welcome from "./Welcome";
 import "./Dashboard.css";
-import VideoTracker from "./sidebarOptions/VideoTracker/VideoTracker"; // ⭐ NEW IMPORT
+
+// Every other tool is heavy (jszip, georaster, leaflet-draw, ...) and is only
+// needed once the user actually picks it, so it's code-split via React.lazy —
+// this keeps the initial bundle/parse time small.
+const Location = lazy(() => import("./sidebarOptions/Location"));
+const ShapeFileExtractor = lazy(() => import("./sidebarOptions/ShapeFileExtractor"));
+const KML = lazy(() => import("./sidebarOptions/KML"));
+const KMZ = lazy(() => import("./sidebarOptions/KMZ"));
+const TIF = lazy(() => import("./sidebarOptions/Tif"));
+const VideoTracker = lazy(() => import("./sidebarOptions/VideoTracker/VideoTracker"));
+
+const LazyFallback = () => (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      height: "calc(100vh - 64px)",
+    }}
+  >
+    <CircularProgress />
+  </Box>
+);
 
 
 const Dashboard = () => {
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedOption, setSelectedOption] = useState("Location");
+  const [isSidebarOpen, setSidebarOpen] = usePersistentState("dashboard-sidebar-open", false);
+  const [selectedOption, setSelectedOption] = usePersistentState("dashboard-selected-option", "");
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const toggleSidebar = () => {
-    setSidebarOpen((prev) => !prev);
-  };
+  // Restore page scroll position after a refresh
+  useScrollRestoration("dashboard-main");
 
-  useEffect(() => {
-    const handleToggle = () => setSidebarOpen((prev) => !prev);
-    window.addEventListener("toggle-gis-sidebar", handleToggle);
-    return () => window.removeEventListener("toggle-gis-sidebar", handleToggle);
-  }, []);
+  const toggleSidebar = () => {
+    setSidebarOpen(!isSidebarOpen);
+  };
 
   // Define all sidebar options in one place
   const sidebarOptions = [
@@ -81,7 +97,7 @@ const Dashboard = () => {
         return <VideoTracker />;
 
       default:
-        return <Location />;
+        return <Welcome />;
     }
   };
 
@@ -166,7 +182,9 @@ const Dashboard = () => {
         className="main-content"
         style={{ marginLeft: isSmallScreen || !isSidebarOpen ? 0 : 250 }}
       >
-        {renderContent()} 
+        <Suspense fallback={<LazyFallback />}>
+          {renderContent()}
+        </Suspense>
       </Box>
     </Box>
   );
