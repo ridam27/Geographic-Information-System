@@ -6,6 +6,7 @@
   "scripts": {
     "postinstall": "node scripts/install-all.js",
     "install-all": "node scripts/install-all.js",
+    "restore-envs": "node scripts/restore-envs.js",
     "start": "npm --prefix \"./main application\" run start"
   },
   "dependencies": {
