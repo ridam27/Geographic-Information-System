@@ -41,29 +41,43 @@ function generateMunicipalPropertyRecord(rawId) {
   const cleanId = String(rawId || "").trim();
   const digits = cleanId.replace(/\D/g, "");
   const num = digits.length > 0 ? parseInt(digits, 10) : 240;
-  const standardId = cleanId.toUpperCase().startsWith("H")
+  const isManish =
+    cleanId.toUpperCase().startsWith("MN") ||
+    cleanId.toLowerCase().includes("manish");
+
+  const standardId = isManish
+    ? `MN-${num}`
+    : cleanId.toUpperCase().startsWith("H")
     ? `H${num}`
     : cleanId.toLowerCase().startsWith("house")
     ? `H${num}`
     : cleanId || `H${num}`;
 
   const firstNames = [
-    "Rajesh", "Suresh", "Anil", "Pooja", "Nitin", "Vandana", "Ramesh",
-    "Sunita", "Mahesh", "Kishore", "Deepak", "Sneha", "Ashok", "Kavita",
-    "Sanjay", "Rekha", "Manoj", "Shobha", "Girish", "Pratibha"
+    "Devendra", "Rajesh", "Suresh", "Anil", "Pooja", "Nitin", "Vandana", "Ramesh",
+    "Sunita", "Mahesh", "Kishore", "Deepak", "Sneha", "Ashok", "Kavita", "Sanjay",
+    "Rekha", "Manoj", "Shobha", "Girish", "Pratibha", "Anand", "Swati", "Pravin",
+    "Amit", "Kiran", "Varsha", "Gaurav", "Dipak", "Prasad", "Aarti", "Sachin"
   ];
-  const middleInitials = ["S.", "M.", "R.", "K.", "N.", "V.", "P.", "G.", "D.", "B.", "A."];
+  const middleInitials = ["S.", "M.", "R.", "K.", "N.", "V.", "P.", "G.", "D.", "B.", "A.", "J.", "T."];
   const lastNames = [
     "Deshmukh", "Patil", "Sharma", "Kulkarni", "Joshi", "Agrawal", "Thakre",
     "Verma", "Raut", "Meshram", "Chavan", "Bonde", "Wankhede", "Gawande",
-    "Kale", "Tidke", "Pawar", "Shinde", "Mahajan", "Ghate"
+    "Kale", "Tidke", "Pawar", "Shinde", "Mahajan", "Ghate", "Gadkari", "Fadnavis",
+    "Borkar", "Lande", "Khobragade", "Sawant", "Zade", "Dharashivkar"
   ];
-  const propertyNames = [
-    "Shree Ganesh Residency", "Sai Krupa Niwas", "Surya Commercial Hub",
-    "Om Shanti Villa", "Venkatesh Bhavan", "Ashirwad Heights",
-    "Matruchhaya Complex", "Navkar Enclave", "Radha Krishna Niwas",
-    "Shivneri Apartment", "Gokul Dham", "Balaji Commercial Complex"
-  ];
+  const propertyNames = isManish
+    ? [
+        "Sai Sparsh Residency", "Surya Plaza", "Parijat Villa", "Shiv Dham Complex",
+        "Balaji Arcade", "Gokul Niwas", "Panchvati Enclave", "Meghdoot Towers",
+        "Manish Heights", "Royal Palms", "Shree Samarth Kripa", "Lotus Enclave"
+      ]
+    : [
+        "Shree Ganesh Residency", "Sai Krupa Niwas", "Surya Commercial Hub",
+        "Om Shanti Villa", "Venkatesh Bhavan", "Ashirwad Heights",
+        "Matruchhaya Complex", "Navkar Enclave", "Radha Krishna Niwas",
+        "Shivneri Apartment", "Gokul Dham", "Balaji Commercial Complex"
+      ];
   const propertyTypes = [
     "Residential (RCC)", "Commercial Complex", "Mixed Residential & Retail",
     "Independent Villa", "Apartment (RCC)", "Commercial Shop"
@@ -72,8 +86,8 @@ function generateMunicipalPropertyRecord(rawId) {
     "Residential", "Commercial", "Mixed (Residential + Shop)", "Office Space"
   ];
 
-  const firstName = firstNames[num % firstNames.length];
-  const middle = middleInitials[(num * 3) % middleInitials.length];
+  const firstName = firstNames[(num * 3) % firstNames.length];
+  const middle = middleInitials[(num * 5) % middleInitials.length];
   const lastName = lastNames[(num * 7) % lastNames.length];
   const ownerName = `${firstName} ${middle} ${lastName}`;
   const propertyName = propertyNames[num % propertyNames.length];
@@ -81,12 +95,53 @@ function generateMunicipalPropertyRecord(rawId) {
   const usage = usages[num % usages.length];
   const mobile = `+91 9822${String(10000 + ((num * 1373) % 89999))}`;
   const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${num}@gmail.com`;
-  const address = `Plot No. ${num}, Ward 12, Manewada Ring Road, Nagpur - 440027`;
-  const area = `${85 + (num * 17) % 180} Sq.M`;
-  const floors = `${1 + (num % 3)} Floors (G+${num % 3})`;
-  const yearBuilt = `${2008 + (num % 16)}`;
-  const rateableValue = `${12500 + (num * 340) % 25000}`;
-  const totalTax = `${4200 + (num * 120) % 8500}`;
+
+  const address = isManish
+    ? `Plot No. ${num}, Sector ${1 + (num % 4)}, Near Somalwada Square, Manish Nagar, Nagpur - 440015`
+    : `Plot No. ${num}, Ward 12, Manewada Ring Road, Nagpur - 440027`;
+  const zone = isManish ? "Zone 9 - Laxmi Nagar" : "Zone 4 - Dhantoli";
+  const ward = isManish ? "Ward 36 - Manish Nagar / Somalwada" : "Ward 12 - Manewada";
+  const pincode = isManish ? "440015" : "440027";
+
+  const area = `${115 + ((num * 17) % 145)} Sq.M`;
+  const floorsCount = 1 + (num % 3);
+  const floors = `${floorsCount} Floors (G+${floorsCount - 1})`;
+  const yearBuilt = `${2010 + (num % 14)}`;
+  const rateableValue = `${14500 + ((num * 320) % 24000)}`;
+  const totalTax = `${4800 + ((num * 130) % 7800)}`;
+  const uid = `UID-NMC-${770000 + (num * 13) % 99999}`;
+
+  // High-res crisp SVG architectural survey photo for the property
+  const buildingPhotoSvg = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="230" viewBox="0 0 380 230">
+  <defs>
+    <linearGradient id="bgG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="roofG" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+    <linearGradient id="wallG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <rect width="380" height="230" fill="url(#bgG)" rx="8"/>
+  <rect x="0" y="190" width="380" height="40" fill="#334155"/>
+  <polygon points="110,60 190,20 270,60" fill="url(#roofG)"/>
+  <rect x="120" y="60" width="140" height="130" fill="url(#wallG)" rx="4"/>
+  <rect x="135" y="75" width="30" height="30" fill="#fef08a" rx="2" stroke="#0369a1" stroke-width="2"/>
+  <rect x="215" y="75" width="30" height="30" fill="#fef08a" rx="2" stroke="#0369a1" stroke-width="2"/>
+  <rect x="135" y="125" width="30" height="30" fill="#fef08a" rx="2" stroke="#0369a1" stroke-width="2"/>
+  <rect x="210" y="125" width="40" height="65" fill="#78350f" rx="2" stroke="#451a03" stroke-width="2"/>
+  <circle cx="242" cy="160" r="2.5" fill="#facc15"/>
+  <rect x="115" y="32" width="150" height="22" fill="#0f172a" rx="4" opacity="0.9"/>
+  <text x="190" y="47" fill="#38bdf8" font-size="11" font-family="sans-serif" font-weight="bold" text-anchor="middle">${standardId} - ${propertyName.substring(0, 16)}</text>
+  <text x="190" y="214" fill="#94a3b8" font-size="10" font-family="sans-serif" text-anchor="middle">GIS Municipal Survey Record - ${isManish ? "Manish Nagar" : "Manewada"}</text>
+</svg>
+`)}`;
 
   return {
     "Property Number": standardId,
@@ -112,10 +167,10 @@ function generateMunicipalPropertyRecord(rawId) {
     "Address of Property": address,
     propertyAddress: address,
     address: address,
-    "Postal Pin code of Property": "440027",
-    pincode: "440027",
-    Zone: "Zone 4 - Dhantoli",
-    Ward: "Ward 12 - Manewada",
+    "Postal Pin code of Property": pincode,
+    pincode: pincode,
+    Zone: zone,
+    Ward: ward,
     "Carpet/Built-up area (Sq.M)": area,
     area: area,
     "Number of Floors": floors,
@@ -126,11 +181,17 @@ function generateMunicipalPropertyRecord(rawId) {
     "Old Assessment Value": `₹${rateableValue}`,
     "Old Assessment Year": "2020-2021",
     "Assessment year": "2025-2026",
-    "Category of Property": "Residential A-1",
+    "Category of Property": isManish ? "Residential A-2" : "Residential A-1",
     "Type of Owner": "Individual",
     "Total Property Tax": `₹${totalTax}`,
     totalTax: `₹${totalTax}`,
     rateableValue: `₹${rateableValue}`,
+    "UID number of Property Owner": uid,
+    "Photograph of Building": buildingPhotoSvg,
+    photoUrl: buildingPhotoSvg,
+    photo: buildingPhotoSvg,
+    image: buildingPhotoSvg,
+    buildingImage: buildingPhotoSvg,
   };
 }
 
@@ -451,17 +512,14 @@ function loadKMZLayers() {
 
       housesDataSource = combinedHousesDS;
 
-      // Palette of vibrant translucent colors for 3D buildings
+      // Palette of vibrant translucent colors for 3D buildings (matching Manewada style)
       const HOUSE_COLORS = [
-        Cesium.Color.fromCssColorString("#3B82F6").withAlpha(0.65), // Vibrant Blue
-        Cesium.Color.fromCssColorString("#8B5CF6").withAlpha(0.65), // Violet / Purple
-        Cesium.Color.fromCssColorString("#06B6D4").withAlpha(0.65), // Cyan / Teal
-        Cesium.Color.fromCssColorString("#F97316").withAlpha(0.65), // Vibrant Orange
-        Cesium.Color.fromCssColorString("#D946EF").withAlpha(0.65), // Magenta / Fuchsia
-        Cesium.Color.fromCssColorString("#6366F1").withAlpha(0.65), // Indigo
-        Cesium.Color.fromCssColorString("#0EA5E9").withAlpha(0.65), // Sky Blue
+        Cesium.Color.fromCssColorString("#06B6D4").withAlpha(0.65), // Vibrant Cyan / Sky Blue
+        Cesium.Color.fromCssColorString("#2563EB").withAlpha(0.65), // Royal Blue
+        Cesium.Color.fromCssColorString("#10B981").withAlpha(0.65), // Emerald Green
+        Cesium.Color.fromCssColorString("#DB2777").withAlpha(0.65), // Vibrant Magenta / Pink
       ];
-      const BUILDING_HEIGHTS = [18.0, 24.0, 16.0, 26.0, 20.0, 22.0, 28.0];
+      const BUILDING_HEIGHTS = [8.5, 11.0, 9.0, 12.5, 10.0, 13.0, 11.5, 14.0];
 
       // --- popup customization (uses ptaxDatabase where available) ---
       const fieldMap = [
@@ -503,13 +561,15 @@ function loadKMZLayers() {
             fieldMap.forEach((field) => {
               if (houseInfo.hasOwnProperty(field.key)) {
                 let value = houseInfo[field.key];
-                if (field.key === "Photograph of Building" && value)
-                  value = `<a href="${value}" target="_blank">View Photo</a>`;
-                else if (field.key === "e-mail-id" && value)
+                if (field.key === "Photograph of Building" && value) {
+                  value = `<div style="margin:6px 0;text-align:center;"><img src="${value}" alt="Building Photo" style="width:100%;max-width:280px;height:auto;border-radius:6px;border:1px solid #38bdf8;display:block;margin:0 auto;" /></div>`;
+                } else if (field.key === "e-mail-id" && value) {
                   value = `<a href="mailto:${value}">${value}</a>`;
-                else if (field.key === "Carpet/Built-up area (Sq.M)")
+                } else if (field.key === "Carpet/Built-up area (Sq.M)") {
                   value = `${value} Sq.M`;
-                else if (value === null || value === "") value = "N/A";
+                } else if (value === null || value === "") {
+                  value = "N/A";
+                }
                 tableRows += `<tr><td>${field.label}</td><td>${value}</td></tr>`;
               }
             });
@@ -529,8 +589,8 @@ function loadKMZLayers() {
               const bHeight =
                 houseInfo && houseInfo["Number of Floors"]
                   ? Math.max(
-                      14.0,
-                      parseInt(houseInfo["Number of Floors"], 10) * 4.5
+                      8.5,
+                      parseInt(houseInfo["Number of Floors"], 10) * 3.5
                     )
                   : BUILDING_HEIGHTS[i % BUILDING_HEIGHTS.length];
 

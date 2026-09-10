@@ -426,8 +426,8 @@ function centerOnModel() {
   if (targetEntity) {
     const cameraOffset = new Cesium.HeadingPitchRange(
       Cesium.Math.toRadians(0),
-      Cesium.Math.toRadians(-30.0),
-      1500
+      Cesium.Math.toRadians(-35.0),
+      520
     );
     viewer.zoomTo(targetEntity, cameraOffset);
   } else {
@@ -590,8 +590,8 @@ function loadAllPresetModels(options = {}) {
       entity,
       new Cesium.HeadingPitchRange(
         Cesium.Math.toRadians(0),
-        Cesium.Math.toRadians(-30.0),
-        1400
+        Cesium.Math.toRadians(-35.0),
+        520
       )
     ).catch(() => {});
   }
@@ -649,8 +649,8 @@ function flyToModelId(id) {
   viewer.flyTo(entity, {
     offset: new Cesium.HeadingPitchRange(
       Cesium.Math.toRadians(0),
-      Cesium.Math.toRadians(-30.0),
-      1500
+      Cesium.Math.toRadians(-35.0),
+      520
     ),
   });
 
