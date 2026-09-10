@@ -44,7 +44,7 @@ const Footer = () => {
           </div>
         </div>
       </section>
-      <p>© Copyright 2024 GIOLITH. All Rights Reserved</p>
+      <p>© Copyright 2024 GEOLITH. All Rights Reserved</p>
       <p>An ISO 9001:2015, ISO 45001:2018, ISO 27001:2022, MSME, Startup India Certified company</p>
     </footer>
   );

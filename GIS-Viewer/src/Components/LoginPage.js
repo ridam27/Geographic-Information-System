@@ -74,7 +74,7 @@ const LoginPage = () => {
         <h2 className="sub-title">for your spatial data</h2>
         <p className="description">
           Spatial data visualization, analysis, and management platform designed to empower users with intuitive tools and features.
-          GIOLITH GIS offers a comprehensive suite of functionalities, including interactive mapping, data layering, geospatial analysis, and real-time collaboration.
+          GEOLITH GIS offers a comprehensive suite of functionalities, including interactive mapping, data layering, geospatial analysis, and real-time collaboration.
         </p>
       </div>
       
