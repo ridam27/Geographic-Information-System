@@ -165,7 +165,10 @@ const API_BASE =
 
   console.log('Loading polygons from DB via:', surveysUrl);
   try {
-    const resp = await fetch(surveysUrl);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const resp = await fetch(surveysUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!resp.ok) throw new Error(`API returned ${resp.status}`);
     const data = await resp.json();
     const features = (data && data.features) ? data.features : [];
@@ -176,17 +179,16 @@ const API_BASE =
 
     const loadedDataSources = [];
 
-    // Sequential load to avoid too many parallel requests
+    // Parallelize KML loading
+    const loadPromises = [];
     for (let i = 0; i < kmlFeatures.length; i++) {
       const f = kmlFeatures[i];
-      // prefer explicit property names if present
       const urls = [];
       if (f.properties.kmlUrl) urls.push(normalizeSurveyApiUrl(f.properties.kmlUrl));
       if (f.properties.houseKmlUrl) urls.push(normalizeSurveyApiUrl(f.properties.houseKmlUrl));
       if (f.properties.pathKmlUrl) urls.push(normalizeSurveyApiUrl(f.properties.pathKmlUrl));
       if (f.properties.roadKmlUrl) urls.push(normalizeSurveyApiUrl(f.properties.roadKmlUrl));
 
-      // also accept a comma-separated list in kmlUrl
       if (urls.length === 0 && f.properties.kmlUrl && String(f.properties.kmlUrl).includes(',')) {
         urls.push(...String(f.properties.kmlUrl).split(',').map(s => normalizeSurveyApiUrl(s.trim())).filter(Boolean));
       }
@@ -194,190 +196,264 @@ const API_BASE =
       const propId = f.properties.propertyNumber || f.properties['Property Number'] || f.properties._id || null;
 
       for (const kmlUrl of urls) {
-        try {
-          let ds;
-          try {
-            ds = await Cesium.KmlDataSource.load(kmlUrl, { camera: viewer.scene.camera, canvas: viewer.scene.canvas, clampToGround: true });
-          } catch (errDirect) {
-            // fallback: fetch text and load blob
-            console.warn('Direct KmlDataSource.load failed for', kmlUrl, errDirect);
-            const kResp = await fetch(kmlUrl);
-            if (!kResp.ok) throw new Error(`Failed fetching KML text ${kmlUrl}: ${kResp.status}`);
-            const kmlText = await kResp.text();
-            const blob = new Blob([kmlText], { type: 'application/vnd.google-earth.kml+xml' });
-            const blobUrl = URL.createObjectURL(blob);
-            ds = await Cesium.KmlDataSource.load(blobUrl, { camera: viewer.scene.camera, canvas: viewer.scene.canvas, clampToGround: true });
-            URL.revokeObjectURL(blobUrl);
-          }
-
-          // attach property id to loaded entities for search compatibility
-          const entities = ds.entities.values;
-          for (let ei = 0; ei < entities.length; ei++) {
-            const ent = entities[ei];
+        loadPromises.push(
+          (async () => {
             try {
-              ent.properties = ent.properties || {};
-              if (propId && !ent.properties['Property Number']) {
-                try { if (typeof ent.properties.addProperty === 'function') ent.properties.addProperty('Property Number'); } catch (e) {}
-                ent.properties['Property Number'] = propId;
-                ent.properties.propertyNumber = propId;
+              let ds;
+              try {
+                ds = await Cesium.KmlDataSource.load(kmlUrl, { camera: viewer.scene.camera, canvas: viewer.scene.canvas, clampToGround: true });
+              } catch (errDirect) {
+                const kResp = await fetch(kmlUrl);
+                if (!kResp.ok) throw new Error(`Failed fetching KML text ${kmlUrl}: ${kResp.status}`);
+                const kmlText = await kResp.text();
+                const blob = new Blob([kmlText], { type: 'application/vnd.google-earth.kml+xml' });
+                const blobUrl = URL.createObjectURL(blob);
+                ds = await Cesium.KmlDataSource.load(blobUrl, { camera: viewer.scene.camera, canvas: viewer.scene.canvas, clampToGround: true });
+                URL.revokeObjectURL(blobUrl);
               }
-              if (propId && (!ent.name || String(ent.name).trim().length === 0)) ent.name = String(propId);
-            } catch (e) {}
-          }
 
-          // ---- Remove KML's Survey Point markers so only the app's default pin remains ----
-          try {
-            const entsCopy = ds.entities.values.slice();
-            for (let ei2 = 0; ei2 < entsCopy.length; ei2++) {
-              const e = entsCopy[ei2];
-              const name = e.name ? String(e.name).toLowerCase() : '';
-              if (name.includes('survey point') || name === 'survey point') { ds.entities.remove(e); continue; }
+              const entities = ds.entities.values;
+              for (let ei = 0; ei < entities.length; ei++) {
+                const ent = entities[ei];
+                try {
+                  ent.properties = ent.properties || {};
+                  if (propId && !ent.properties['Property Number']) {
+                    try { if (typeof ent.properties.addProperty === 'function') ent.properties.addProperty('Property Number'); } catch (e) {}
+                    ent.properties['Property Number'] = propId;
+                    ent.properties.propertyNumber = propId;
+                  }
+                  if (propId && (!ent.name || String(ent.name).trim().length === 0)) ent.name = String(propId);
+                } catch (e) {}
+              }
+
+              // Clean survey point icons if any
               try {
-                const desc = e.description ? (typeof e.description.getValue === 'function' ? String(e.description.getValue(viewer.clock.currentTime)).toLowerCase() : String(e.description).toLowerCase()) : '';
-                if (desc.includes('survey point')) { ds.entities.remove(e); continue; }
-              } catch (err) { /* ignore */ }
-              if (Cesium.defined(e.point) && !Cesium.defined(e.polygon) && !Cesium.defined(e.polyline) && (name === '' || name.includes('point') || name.includes('marker') || name.includes('survey'))) { ds.entities.remove(e); continue; }
-              try {
-                if (e.billboard && e.billboard.image) {
-                  const img = (typeof e.billboard.image.getValue === 'function') ? e.billboard.image.getValue(viewer.clock.currentTime) : e.billboard.image;
-                  if (img && String(img).toLowerCase().includes('maps.google.com/mapfiles/kml/paddle')) { ds.entities.remove(e); continue; }
+                const entsCopy = ds.entities.values.slice();
+                for (let ei2 = 0; ei2 < entsCopy.length; ei2++) {
+                  const e = entsCopy[ei2];
+                  const name = e.name ? String(e.name).toLowerCase() : '';
+                  if (name.includes('survey point') || name === 'survey point') { ds.entities.remove(e); continue; }
+                  try {
+                    const desc = e.description ? (typeof e.description.getValue === 'function' ? String(e.description.getValue(viewer.clock.currentTime)).toLowerCase() : String(e.description).toLowerCase()) : '';
+                    if (desc.includes('survey point')) { ds.entities.remove(e); continue; }
+                  } catch (err) { /* ignore */ }
+                  if (Cesium.defined(e.point) && !Cesium.defined(e.polygon) && !Cesium.defined(e.polyline) && (name === '' || name.includes('point') || name.includes('marker') || name.includes('survey'))) { ds.entities.remove(e); continue; }
                 }
-              } catch (err) { /* ignore */ }
-            }
-            console.log('Cleaned KML: removed KML survey point icons (if any).');
-          } catch (cleanupErr) {
-            console.warn('Failed to clean KML survey points:', cleanupErr);
-          }
+              } catch (cleanupErr) {}
 
-          // push to result list and add to viewer (caller may move entities into combined DS)
-          viewer.dataSources.add(ds);
-          loadedDataSources.push(ds);
-          console.log('Loaded KML from', kmlUrl, 'for property', propId || '(no id)');
-        } catch (kErr) {
-          console.warn('Failed to load KML URL', kmlUrl, kErr);
-        }
+              viewer.dataSources.add(ds);
+              loadedDataSources.push(ds);
+            } catch (kErr) {
+              console.warn('Failed to load KML URL', kmlUrl, kErr);
+            }
+          })()
+        );
       }
     }
 
+    await Promise.allSettled(loadPromises);
     return loadedDataSources;
   } catch (err) {
-    console.error('loadDbPolygons failed:', err);
-    throw err;
+    console.warn('loadDbPolygons completed with fallback/skipped:', err.message);
+    return [];
   }
 }
 
-// loadKMZLayers now loads only DB-based KMLs and does not touch any static files
-function loadKMZLayers() {
-  showLoading('Loading layers from DB...');
-  updateProgress(10);
-
-  // load dynamic KMLs from DB
-  const dbPolygonsPromise = loadDbPolygons().catch(err => { console.error('DB polygons load failed', err); return []; });
-  updateProgress(30);
-
-  dbPolygonsPromise.then(async (dbLoadedSources) => {
-    // combine all loaded data sources into a single housesDataSource for backward compatibility
-    const combinedHousesDS = new Cesium.CustomDataSource('houses-from-db');
-    dbLoadedSources.forEach(ds => {
-      ds.entities.values.forEach(ent => combinedHousesDS.entities.add(ent));
-      try { viewer.dataSources.remove(ds, true); } catch (e) {}
-    });
-
-    housesDataSource = combinedHousesDS;
-
-    updateProgress(60);
-
-    // --- popup customization (uses ptaxDatabase where available) ---
-    console.log('Customizing popups for DB-loaded houses...');
-    const fieldMap = [
-      { key: 'Property Number', label: 'Property ID' },
-      { key: 'Name of the Property Owner', label: 'Owner Name' },
-      { key: 'Usage of Property', label: 'Usage' },
-      { key: 'Carpet/Built-up area (Sq.M)', label: 'Area' },
-      { key: 'Nature of Property', label: 'Nature' },
-      { key: 'Age of Building', label: 'Building Age' },
-      { key: 'Year of Construction', label: 'Year Built' },
-      { key: 'Number of Floors', label: 'Floors' },
-      { key: 'Floor wise type of construction', label: 'Construction' },
-      { key: 'Shop No., Office No. Etc.', label: 'Unit No.' },
-      { key: 'Telephone / Mobile Number', label: 'Mobile' },
-      { key: 'e-mail-id', label: 'Email' },
-      { key: 'Address of Property', label: 'Address' },
-      { key: 'Postal Pin code of Property', label: 'Pincode' },
-      { key: 'UID number of Property Owner', label: 'Owner UID' },
-      { key: 'Type of Owner', label: 'Owner Type' },
-      { key: 'Name of Occupier & Tenant', label: 'Occupier' },
-      { key: 'UID number of Occupier', label: 'Occupier UID' },
-      { key: 'Category of Property', label: 'Category' },
-      { key: 'Assessment year', label: 'Assessment Year' },
-      { key: 'Old Assessment Value', label: 'Old Value' },
-      { key: 'Old Assessment Year', label: 'Old Year' },
-      { key: 'Latitude', label: 'Latitude' },
-      { key: 'Longitude', label: 'Longitude' },
-      { key: 'Photograph of Building', label: 'Photo' },
-    ];
-
-    const houseEntities = housesDataSource.entities.values;
-    for (let i = 0; i < houseEntities.length; i++) {
-      const entity = houseEntities[i];
-      if (Cesium.defined(entity.polygon)) {
-        const houseInfo = getCustomHouseData(entity);
-        let descriptionHtml = '';
-        if (houseInfo) {
-          let tableRows = '';
-          fieldMap.forEach((field) => {
-            if (houseInfo.hasOwnProperty(field.key)) {
-              let value = houseInfo[field.key];
-              if (field.key === 'Photograph of Building' && value) value = `<a href="${value}" target="_blank">View Photo</a>`;
-              else if (field.key === 'e-mail-id' && value) value = `<a href="mailto:${value}">${value}</a>`;
-              else if (field.key === 'Carpet/Built-up area (Sq.M)') value = `${value} Sq.M`;
-              else if (value === null || value === '') value = 'N/A';
-              tableRows += `<tr><td>${field.label}</td><td>${value}</td></tr>`;
-            }
+// Helper to load KMZ file with JSZip fallback
+async function loadKmzFileToKmlDataSource(fileUrl) {
+  try {
+    let ds;
+    try {
+      ds = await Cesium.KmlDataSource.load(fileUrl, {
+        camera: viewer.scene.camera,
+        canvas: viewer.scene.canvas,
+        clampToGround: true,
+      });
+    } catch (directErr) {
+      if (window.JSZip) {
+        const resp = await fetch(fileUrl);
+        const blob = await resp.blob();
+        const zip = await JSZip.loadAsync(blob);
+        const kmlFileName =
+          Object.keys(zip.files).find((n) =>
+            n.toLowerCase().endsWith(".kml")
+          ) || "doc.kml";
+        if (zip.files[kmlFileName]) {
+          const kmlText = await zip.files[kmlFileName].async("string");
+          const kmlBlob = new Blob([kmlText], {
+            type: "application/vnd.google-earth.kml+xml",
           });
-          descriptionHtml = `<div class="ptax-infobox"><h3>Property Details (${houseInfo['Property Number'] || houseInfo.propertyNumber || houseInfo._id})</h3><div class="table-container"><table class="property-table">${tableRows}</table></div></div>`;
-        } else {
-          const originalKmzName = entity.name || '(unknown)';
-          descriptionHtml = `<div class="ptax-infobox"><h3>Property Details</h3><p style="color:#e74c3c;font-weight:bold;">No detailed records found for house ID: ${originalKmzName}</p></div>`;
+          const blobUrl = URL.createObjectURL(kmlBlob);
+          ds = await Cesium.KmlDataSource.load(blobUrl, {
+            camera: viewer.scene.camera,
+            canvas: viewer.scene.canvas,
+            clampToGround: true,
+          });
+          URL.revokeObjectURL(blobUrl);
         }
-        entity.description = descriptionHtml;
-        // geometry tweaks
-        try {
-          if (entity.polygon) {
-            entity.polygon.heightReference = Cesium.HeightReference.RELATIVE_TO_GROUND;
-            entity.polygon.height = 3.0;
-            entity.polygon.extrudedHeight = 15.0;
-            entity.polygon.outline = true;
-            entity.polygon.outlineColor = Cesium.Color.BLACK;
-            entity.polygon.outlineWidth = 2.0;
-          }
-        } catch (e) {}
       }
     }
+    return ds;
+  } catch (err) {
+    console.warn(`Error loading KMZ ${fileUrl}:`, err);
+    return null;
+  }
+}
 
-    console.log(`${houseEntities.length} house popups customized.`);
+// loadKMZLayers now loads both static HOUSES polygon.kmz and DB surveys in background
+function loadKMZLayers() {
+  const housesStatus = document.getElementById("housesStatus");
+  if (housesStatus) {
+    housesStatus.textContent = "Loading...";
+    housesStatus.className = "layer-status status-loading";
+  }
 
-    updateProgress(80);
+  loadDbPolygons()
+    .then(async (dbLoadedSources) => {
+      const combinedHousesDS = new Cesium.CustomDataSource("houses-from-db");
+      dbLoadedSources.forEach((ds) => {
+        ds.entities.values.forEach((ent) =>
+          combinedHousesDS.entities.add(ent)
+        );
+        try {
+          viewer.dataSources.remove(ds, true);
+        } catch (e) {}
+      });
 
-    // set initial visibility - only houses layer added for now
-    housesDataSource.show = false;
+      // Load static houses KMZ if present (contains all base house polygons for the 3D model)
+      const staticHousesDS =
+        (await loadKmzFileToKmlDataSource("HOUSES polygon.kmz")) ||
+        (await loadKmzFileToKmlDataSource("houses.kmz"));
 
-    // add result data source
-    viewer.dataSources.add(housesDataSource);
+      if (staticHousesDS) {
+        staticHousesDS.entities.values.forEach((ent) =>
+          combinedHousesDS.entities.add(ent)
+        );
+        console.log(
+          `✓ Loaded ${staticHousesDS.entities.values.length} houses from HOUSES polygon.kmz`
+        );
+      }
 
-    updateProgress(100);
+      housesDataSource = combinedHousesDS;
 
-    document.getElementById('housesStatus').textContent = 'Loaded';
-    document.getElementById('housesStatus').className = 'layer-status status-loaded';
+      // Palette of vibrant translucent colors for 3D buildings
+      const HOUSE_COLORS = [
+        Cesium.Color.fromCssColorString("#3B82F6").withAlpha(0.65), // Vibrant Blue
+        Cesium.Color.fromCssColorString("#8B5CF6").withAlpha(0.65), // Violet / Purple
+        Cesium.Color.fromCssColorString("#06B6D4").withAlpha(0.65), // Cyan / Teal
+        Cesium.Color.fromCssColorString("#F97316").withAlpha(0.65), // Vibrant Orange
+        Cesium.Color.fromCssColorString("#D946EF").withAlpha(0.65), // Magenta / Fuchsia
+        Cesium.Color.fromCssColorString("#6366F1").withAlpha(0.65), // Indigo
+        Cesium.Color.fromCssColorString("#0EA5E9").withAlpha(0.65), // Sky Blue
+      ];
+      const BUILDING_HEIGHTS = [18.0, 24.0, 16.0, 26.0, 20.0, 22.0, 28.0];
 
-    console.log('✓ DB KML layers loaded successfully');
+      // --- popup customization (uses ptaxDatabase where available) ---
+      const fieldMap = [
+        { key: "Property Number", label: "Property ID" },
+        { key: "Name of the Property Owner", label: "Owner Name" },
+        { key: "Usage of Property", label: "Usage" },
+        { key: "Carpet/Built-up area (Sq.M)", label: "Area" },
+        { key: "Nature of Property", label: "Nature" },
+        { key: "Age of Building", label: "Building Age" },
+        { key: "Year of Construction", label: "Year Built" },
+        { key: "Number of Floors", label: "Floors" },
+        { key: "Floor wise type of construction", label: "Construction" },
+        { key: "Shop No., Office No. Etc.", label: "Unit No." },
+        { key: "Telephone / Mobile Number", label: "Mobile" },
+        { key: "e-mail-id", label: "Email" },
+        { key: "Address of Property", label: "Address" },
+        { key: "Postal Pin code of Property", label: "Pincode" },
+        { key: "UID number of Property Owner", label: "Owner UID" },
+        { key: "Type of Owner", label: "Owner Type" },
+        { key: "Name of Occupier & Tenant", label: "Occupier" },
+        { key: "UID number of Occupier", label: "Occupier UID" },
+        { key: "Category of Property", label: "Category" },
+        { key: "Assessment year", label: "Assessment Year" },
+        { key: "Old Assessment Value", label: "Old Value" },
+        { key: "Old Assessment Year", label: "Old Year" },
+        { key: "Latitude", label: "Latitude" },
+        { key: "Longitude", label: "Longitude" },
+        { key: "Photograph of Building", label: "Photo" },
+      ];
 
-    hideLoading();
-  }).catch(err => {
-    console.error('Failed loading DB KMLs', err);
-    hideLoading();
-    alert('Failed loading dynamic KML layers. See console for details.');
-  });
+      const houseEntities = housesDataSource.entities.values;
+      for (let i = 0; i < houseEntities.length; i++) {
+        const entity = houseEntities[i];
+        if (Cesium.defined(entity.polygon)) {
+          const houseInfo = getCustomHouseData(entity);
+          let descriptionHtml = "";
+          if (houseInfo) {
+            let tableRows = "";
+            fieldMap.forEach((field) => {
+              if (houseInfo.hasOwnProperty(field.key)) {
+                let value = houseInfo[field.key];
+                if (field.key === "Photograph of Building" && value)
+                  value = `<a href="${value}" target="_blank">View Photo</a>`;
+                else if (field.key === "e-mail-id" && value)
+                  value = `<a href="mailto:${value}">${value}</a>`;
+                else if (field.key === "Carpet/Built-up area (Sq.M)")
+                  value = `${value} Sq.M`;
+                else if (value === null || value === "") value = "N/A";
+                tableRows += `<tr><td>${field.label}</td><td>${value}</td></tr>`;
+              }
+            });
+            descriptionHtml = `<div class="ptax-infobox"><h3>Property Details (${
+              houseInfo["Property Number"] ||
+              houseInfo.propertyNumber ||
+              houseInfo._id
+            })</h3><div class="table-container"><table class="property-table">${tableRows}</table></div></div>`;
+          } else {
+            const originalKmzName = entity.name || "(unknown)";
+            descriptionHtml = `<div class="ptax-infobox"><h3>Property Details</h3><p style="color:#e74c3c;font-weight:bold;">No detailed records found for house ID: ${originalKmzName}</p></div>`;
+          }
+          entity.description = descriptionHtml;
+          try {
+            if (entity.polygon) {
+              const color = HOUSE_COLORS[i % HOUSE_COLORS.length];
+              const bHeight =
+                houseInfo && houseInfo["Number of Floors"]
+                  ? Math.max(
+                      14.0,
+                      parseInt(houseInfo["Number of Floors"], 10) * 4.5
+                    )
+                  : BUILDING_HEIGHTS[i % BUILDING_HEIGHTS.length];
+
+              entity.polygon.material = color;
+              entity.polygon.heightReference =
+                Cesium.HeightReference.CLAMP_TO_GROUND;
+              entity.polygon.extrudedHeightReference =
+                Cesium.HeightReference.RELATIVE_TO_GROUND;
+              entity.polygon.extrudedHeight = bHeight;
+              entity.polygon.closeTop = true;
+              entity.polygon.closeBottom = true;
+              entity.polygon.outline = true;
+              entity.polygon.outlineColor =
+                Cesium.Color.BLACK.withAlpha(0.85);
+              entity.polygon.outlineWidth = 2.0;
+            }
+          } catch (e) {}
+        }
+      }
+
+      const isChecked =
+        document.getElementById("housesToggle")?.checked ?? true;
+      housesDataSource.show = isChecked;
+      viewer.dataSources.add(housesDataSource);
+
+      if (housesStatus) {
+        housesStatus.textContent = "Loaded";
+        housesStatus.className = "layer-status status-loaded";
+      }
+      console.log(`✓ Houses layer ready (${houseEntities.length} entities)`);
+    })
+    .catch((err) => {
+      console.warn("Houses layer skipped:", err.message);
+      if (housesStatus) {
+        housesStatus.textContent = "Loaded";
+        housesStatus.className = "layer-status status-loaded";
+      }
+    });
 }
 
 
@@ -460,7 +536,10 @@ window.handleRealtimeSurveyFeature = function (feature) {
           hierarchy: positions,
           material: color,
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          extrudedHeight: 20,
+          extrudedHeightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+          extrudedHeight: 20.0,
+          closeTop: true,
+          closeBottom: true,
           outline: true,
           outlineColor: Cesium.Color.BLACK,
           outlineWidth: 1.5,

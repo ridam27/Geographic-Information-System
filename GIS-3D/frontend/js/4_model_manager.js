@@ -418,13 +418,20 @@ function resetToGroundLevel() {
 }
 
 function centerOnModel() {
-  if (modelEntity) {
+  const targetEntity =
+    modelEntity ||
+    presetModelEntities[currentModelId || DEFAULT_MODEL_ID] ||
+    presetModelEntities["manewada"];
+
+  if (targetEntity) {
     const cameraOffset = new Cesium.HeadingPitchRange(
       Cesium.Math.toRadians(0),
-      Cesium.Math.toRadians(-15),
-      1000
+      Cesium.Math.toRadians(-30.0),
+      1500
     );
-    viewer.zoomTo(modelEntity, cameraOffset);
+    viewer.zoomTo(targetEntity, cameraOffset);
+  } else {
+    flyToModelId(DEFAULT_MODEL_ID);
   }
 }
 
@@ -480,7 +487,7 @@ const MODELS = [
 ];
 
 const DEFAULT_MODEL_ID = "manewada";
-let currentModelId = null;
+let currentModelId = "manewada";
 
 // Holds every preset model entity currently on the map, keyed by id.
 // Both models live in here at once — nothing gets removed when a
@@ -553,44 +560,67 @@ function addPresetModelEntity(config) {
   return entity;
 }
 
-// Loads every model in MODELS onto the viewer at once and flies the
-// camera to the default one. Call this on startup instead of
-// loadModelById so both GLBs are always present, regardless of which
-// one gets searched/selected afterwards.
+// Directly opens the active 3D model and terrain on startup without any loading overlay
 function loadAllPresetModels(options = {}) {
-  showLoading("Loading models...");
-
-  MODELS.forEach((config) => addPresetModelEntity(config));
-
   currentModelId = DEFAULT_MODEL_ID;
   const select = document.getElementById("modelSelect");
   if (select) select.value = DEFAULT_MODEL_ID;
 
-  const defaultEntity = presetModelEntities[DEFAULT_MODEL_ID];
+  const defaultConfig = getModelConfig(DEFAULT_MODEL_ID);
+  const elLon = document.getElementById("longitude");
+  const elLat = document.getElementById("latitude");
+  const elHeight = document.getElementById("height");
+  const elScale = document.getElementById("scale");
+  const elHeading = document.getElementById("heading");
+  const elPitch = document.getElementById("pitch");
+  const elRoll = document.getElementById("roll");
 
-  viewer
-    .flyTo(defaultEntity, {
-      offset: new Cesium.HeadingPitchRange(
+  if (elLon) elLon.value = defaultConfig.longitude;
+  if (elLat) elLat.value = defaultConfig.latitude;
+  if (elHeight) elHeight.value = defaultConfig.height;
+  if (elScale) elScale.value = defaultConfig.scale;
+  if (elHeading) elHeading.value = defaultConfig.heading;
+  if (elPitch) elPitch.value = defaultConfig.pitch;
+  if (elRoll) elRoll.value = defaultConfig.roll;
+
+  // Add primary model (Manewada) directly to viewer
+  const entity = addPresetModelEntity(defaultConfig);
+  if (entity) {
+    viewer.zoomTo(
+      entity,
+      new Cesium.HeadingPitchRange(
         Cesium.Math.toRadians(0),
         Cesium.Math.toRadians(-30.0),
-        1500
-      ),
-    })
-    .then(() => {
-      document.getElementById("modelStatus").textContent = "Loaded";
-      document.getElementById("modelStatus").className =
-        "layer-status status-loaded";
-      document.getElementById("modelToggle").checked = true;
+        1400
+      )
+    ).catch(() => {});
+  }
 
-      hideLoading();
+  const modelStatus = document.getElementById("modelStatus");
+  if (modelStatus) {
+    modelStatus.textContent = "Loaded";
+    modelStatus.className = "layer-status status-loaded";
+  }
+  const modelToggle = document.getElementById("modelToggle");
+  if (modelToggle) {
+    modelToggle.checked = true;
+  }
 
-      // Load KMZ layers only the first time models are positioned
-      if (options.isInitial) {
-        setTimeout(loadKMZLayers, 500);
-      }
+  hideLoading();
+
+  // Load remaining models in background
+  setTimeout(() => {
+    MODELS.filter((m) => m.id !== DEFAULT_MODEL_ID).forEach((config) => {
+      addPresetModelEntity(config);
     });
+  }, 1000);
 
-  console.log("All preset models loading...");
+  // Load KMZ layers in background
+  if (options.isInitial) {
+    setTimeout(loadKMZLayers, 200);
+  }
+
+  console.log("3D Terrain & model opened directly with Manewada as default.");
 }
 
 // Flies the camera to an already-loaded preset model by id.

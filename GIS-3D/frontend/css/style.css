@@ -1158,14 +1158,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 #loading-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(4, 8, 16, 0.88);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 10000;
+  display: none !important;
 }
 
 .spinner {

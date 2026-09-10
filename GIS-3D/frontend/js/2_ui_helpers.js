@@ -1,26 +1,10 @@
 // File: js/2_ui_helpers.js
 // Logic bilkul change nahi kiya hai.
 
-// Show loading overlay
+// Show loading overlay (kept non-blocking so 3D terrain directly opens)
 function showLoading(message) {
-  document.getElementById("loading-text").textContent = message;
-  document.getElementById("loading-overlay").style.display = "flex";
-  document.getElementById("memory-warning").style.display =
-    navigator.deviceMemory < 4 ? "block" : "none";
-
-  if (!memoryCheckInterval) {
-    memoryCheckInterval = setInterval(() => {
-      const memory = performance.memory;
-      if (memory) {
-        const usedMB = Math.round(memory.usedJSHeapSize / 1048576);
-        const totalMB = Math.round(memory.totalJSHeapSize / 1048576);
-        const debugText = document.getElementById("debug-text");
-        if (debugText) {
-          debugText.innerHTML += `Memory: ${usedMB}MB / ${totalMB}MB<br>`;
-        }
-      }
-    }, 2000);
-  }
+  const loadingText = document.getElementById("loading-text");
+  if (loadingText) loadingText.textContent = message;
 }
 
 // Hide loading overlay

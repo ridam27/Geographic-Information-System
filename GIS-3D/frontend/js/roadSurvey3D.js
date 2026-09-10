@@ -17,9 +17,8 @@ const API_BASE =
 function ensureRoadsDataSource() {
   if (!roadsDataSource) {
     roadsDataSource = new Cesium.CustomDataSource("roads");
-    // Start hidden, same as housesDataSource, until user checks the
-    // "Roads" checkbox in the Layer Manager.
-    roadsDataSource.show = false;
+    const isChecked = document.getElementById("roadsToggle")?.checked ?? true;
+    roadsDataSource.show = isChecked;
     viewer.dataSources.add(roadsDataSource);
   }
   return roadsDataSource;
@@ -38,9 +37,6 @@ fetch(`${API_BASE}/api/road-surveys`)
   })
   .catch(err => console.error("Road survey load error:", err))
   .finally(() => {
-    // Layer Manager me "Roads" status hamesha "Loading..." atka reh jata
-    // tha kyunki isse kabhi update hi nahi kiya jata tha. Fetch complete
-    // hote hi (success ya fail dono me) status ko sahi state me update.
     const statusEl = document.getElementById("roadsStatus");
     if (statusEl) {
       statusEl.textContent = "Loaded";
@@ -126,6 +122,19 @@ async function loadStaticRoadKMZ() {
     console.log(`Loaded ${allEntities.length} road features from ${file}`);
 
     allEntities.forEach((entity) => {
+      if (entity.polygon) {
+        entity.polygon.material = Cesium.Color.RED.withAlpha(0.65);
+        entity.polygon.heightReference = Cesium.HeightReference.CLAMP_TO_GROUND;
+        entity.polygon.outline = true;
+        entity.polygon.outlineColor = Cesium.Color.WHITE.withAlpha(0.9);
+        entity.polygon.outlineWidth = 2.0;
+      }
+      if (entity.polyline) {
+        entity.polyline.material = Cesium.Color.RED.withAlpha(0.85);
+        entity.polyline.width = 10.0;
+        entity.polyline.clampToGround = true;
+      }
+
       // Add entity to roadsDataSource
       ds.entities.add(entity);
 

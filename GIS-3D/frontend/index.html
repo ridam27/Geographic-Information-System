@@ -140,15 +140,15 @@
 
             <div class="layer-toggle-row">
               <div class="layer-toggle" onclick="toggleLayer('roads')">
-                <input type="checkbox" id="roadsToggle" onclick="event.stopPropagation(); toggleLayer('roads')" />
+                <input type="checkbox" id="roadsToggle" checked onclick="event.stopPropagation(); toggleLayer('roads')" />
                 <label for="roadsToggle">Roads</label>
                 <span class="layer-status status-loading" id="roadsStatus">Loading...</span>
               </div>
 
               <div class="layer-toggle" onclick="toggleLayer('houses')">
-                <input type="checkbox" id="housesToggle" onclick="event.stopPropagation(); toggleLayer('houses')" />
+                <input type="checkbox" id="housesToggle" checked onclick="event.stopPropagation(); toggleLayer('houses')" />
                 <label for="housesToggle">Houses</label>
-                <span class="layer-status status-loaded" id="housesStatus">Loaded</span>
+                <span class="layer-status status-loading" id="housesStatus">Loading...</span>
               </div>
             </div>
           </div>
@@ -274,7 +274,9 @@
     window.GLOVE_BACKEND_URL = isLocal3DHost
       ? "http://localhost:4000"
       : "https://geographic-information-system.onrender.com";
-    window.SURVEY_BACKEND_URL = "https://geo-survey-backend-2fy8.onrender.com";
+    window.SURVEY_BACKEND_URL = isLocal3DHost
+      ? "http://localhost:4002"
+      : "https://geo-survey-backend-2fy8.onrender.com";
   </script>
   <!-- IMPORTANT: 1_config_globals.js must load BEFORE ptax_data.js because
        ptax_data.js calls window.resolveSurveyBackendBase(), which is

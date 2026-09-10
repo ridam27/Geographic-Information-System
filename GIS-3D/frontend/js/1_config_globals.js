@@ -16,7 +16,10 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
       accessToken: Cesium.Ion.defaultAccessToken,
     })
   ),
-  terrainProvider: Cesium.createWorldTerrain(),
+  terrainProvider: Cesium.createWorldTerrain({
+    requestVertexNormals: false,
+    requestWaterMask: false,
+  }),
   scene3DOnly: false,
   shouldAnimate: true,
   shadows: false,
@@ -44,8 +47,20 @@ viewer.scene.sun.show = true;
 viewer.scene.moon.show = true;
 viewer.scene.highDynamicRange = true;
 viewer.scene.postProcessStages.fxaa.enabled = true;
-viewer.scene.globe.maximumScreenSpaceError = 1.5;
+viewer.scene.globe.maximumScreenSpaceError = 2.0;
+viewer.scene.globe.loadingDescendantLimit = 20;
+viewer.scene.globe.tileCacheSize = 100;
 viewer.resolutionScale = Math.min(window.devicePixelRatio || 1, 1.5);
+
+// Directly position camera to 3D terrain location immediately on startup
+viewer.camera.setView({
+  destination: Cesium.Cartesian3.fromDegrees(79.109468, 21.096398, 1200),
+  orientation: {
+    heading: Cesium.Math.toRadians(0),
+    pitch: Cesium.Math.toRadians(-30.0),
+    roll: 0.0,
+  },
+});
 
 // Disable default double-click behavior
 viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(
