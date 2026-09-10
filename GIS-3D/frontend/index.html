@@ -10,8 +10,8 @@
     style-src * 'self' 'unsafe-inline';
     img-src * 'self' data: blob:;
     media-src * 'self' blob: data:;
-    frame-src * 'self' http://localhost:5001 http://13.127.220.89:8083;
-    child-src * 'self' blob: http://localhost:5001 http://13.127.220.89:8083;
+    frame-src * 'self' http://localhost:5001 https://everythingyoupost.com;
+    child-src * 'self' blob: http://localhost:5001 https://everythingyoupost.com;
     worker-src * blob: 'self' https://cesium.com;
   ">
 
@@ -1058,7 +1058,8 @@
         <button type="button" class="sewage-btn alt" id="btnClearFlyoverPoints">Clear Points</button>
       </div>
 
-      <div id="flyoverStatusMessage" class="sewage-status">Use Add Point, then click multiple map locations along the road.</div>
+      <div id="flyoverStatusMessage" class="sewage-status">Use Add Point, then click multiple map locations along the
+        road.</div>
     </div>
   </div>
 

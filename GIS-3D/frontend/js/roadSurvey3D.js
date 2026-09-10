@@ -57,6 +57,147 @@ if (typeof socket !== "undefined") {
   });
 }
 
+// Camera icon SVG pin for Road Survey marker
+const ROAD_CAMERA_PIN_ICON = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
+  <circle cx="19" cy="19" r="17" fill="#E11D48" stroke="#FFFFFF" stroke-width="2.5"/>
+  <rect x="9" y="13" width="12" height="12" rx="2" fill="#FFFFFF"/>
+  <polygon points="22,16 28,12 28,26 22,22" fill="#FFFFFF"/>
+</svg>
+`)}`;
+
+/* ------------------------------------------------
+   2️⃣.B LOAD STATIC AREA ROADS (roads.kmz & paths.kmz)
+------------------------------------------------ */
+let isRoadKmzLoaded = false;
+
+async function loadKmzFileToKmlDataSource(fileUrl) {
+  try {
+    let ds;
+    try {
+      ds = await Cesium.KmlDataSource.load(fileUrl, {
+        camera: viewer.scene.camera,
+        canvas: viewer.scene.canvas,
+        clampToGround: true
+      });
+    } catch (directErr) {
+      console.log(`Direct load failed for ${fileUrl}, trying JSZip fallback...`);
+      if (window.JSZip) {
+        const resp = await fetch(fileUrl);
+        const blob = await resp.blob();
+        const zip = await JSZip.loadAsync(blob);
+        const kmlFileName = Object.keys(zip.files).find(n => n.toLowerCase().endsWith('.kml')) || 'doc.kml';
+        if (zip.files[kmlFileName]) {
+          const kmlText = await zip.files[kmlFileName].async('string');
+          const kmlBlob = new Blob([kmlText], { type: 'application/vnd.google-earth.kml+xml' });
+          const blobUrl = URL.createObjectURL(kmlBlob);
+          ds = await Cesium.KmlDataSource.load(blobUrl, {
+            camera: viewer.scene.camera,
+            canvas: viewer.scene.canvas,
+            clampToGround: true
+          });
+          URL.revokeObjectURL(blobUrl);
+        }
+      }
+    }
+    return ds;
+  } catch (err) {
+    console.warn(`Error loading KMZ ${fileUrl}:`, err);
+    return null;
+  }
+}
+
+async function loadStaticRoadKMZ() {
+  if (isRoadKmzLoaded) return;
+  if (typeof Cesium === "undefined" || typeof viewer === "undefined" || !viewer) {
+    setTimeout(loadStaticRoadKMZ, 300);
+    return;
+  }
+
+  isRoadKmzLoaded = true;
+  const ds = ensureRoadsDataSource();
+  const kmzFiles = ["roads.kmz", "paths.kmz"];
+
+  for (const file of kmzFiles) {
+    const kmlDs = await loadKmzFileToKmlDataSource(file);
+    if (!kmlDs) continue;
+
+    const allEntities = kmlDs.entities.values;
+    console.log(`Loaded ${allEntities.length} road features from ${file}`);
+
+    allEntities.forEach((entity) => {
+      // Add entity to roadsDataSource
+      ds.entities.add(entity);
+
+      let positionsToPin = [];
+
+      if (entity.position) {
+        const p = entity.position.getValue(viewer.clock.currentTime);
+        if (p) positionsToPin.push(p);
+      } else if (entity.polyline && entity.polyline.positions) {
+        const rawPositions = entity.polyline.positions.getValue(viewer.clock.currentTime);
+        if (rawPositions && rawPositions.length > 0) {
+          const midIdx = Math.floor(rawPositions.length / 2);
+          positionsToPin.push(rawPositions[midIdx]);
+
+          // Also place pins at start/quarter/three-quarter points if polyline has multiple vertices
+          if (rawPositions.length >= 4) {
+            positionsToPin.push(rawPositions[Math.floor(rawPositions.length / 4)]);
+            positionsToPin.push(rawPositions[Math.floor((3 * rawPositions.length) / 4)]);
+          }
+        }
+      } else if (entity.polygon && entity.polygon.hierarchy) {
+        const hierarchy = entity.polygon.hierarchy.getValue(viewer.clock.currentTime);
+        if (hierarchy && hierarchy.positions && hierarchy.positions.length > 0) {
+          const rawPositions = hierarchy.positions;
+          let sumX = 0, sumY = 0, sumZ = 0;
+          rawPositions.forEach(p => { sumX += p.x; sumY += p.y; sumZ += p.z; });
+          positionsToPin.push(new Cesium.Cartesian3(
+            sumX / rawPositions.length,
+            sumY / rawPositions.length,
+            sumZ / rawPositions.length
+          ));
+        }
+      }
+
+      // Add Camera Pin Icon for each position found
+      positionsToPin.forEach(pos => {
+        const pinEntity = ds.entities.add({
+          position: pos,
+          billboard: {
+            image: ROAD_CAMERA_PIN_ICON,
+            width: 32,
+            height: 32,
+            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY
+          },
+          properties: new Cesium.PropertyBag({
+            hasVideo: true,
+            videoUrl: "https://everythingyoupost.com/stream/?stream=cam"
+          })
+        });
+        pinEntity.allowPicking = true;
+      });
+
+      if (!entity.properties) entity.properties = new Cesium.PropertyBag();
+      try {
+        entity.properties.addProperty("hasVideo", true);
+        entity.properties.addProperty("videoUrl", "https://everythingyoupost.com/stream/?stream=cam");
+      } catch (e) {
+        entity.properties.hasVideo = true;
+        entity.properties.videoUrl = "https://everythingyoupost.com/stream/?stream=cam";
+      }
+    });
+  }
+}
+
+// Automatically load static area roads once viewer initializes
+if (document.readyState === "complete" || document.readyState === "interactive") {
+  loadStaticRoadKMZ();
+} else {
+  window.addEventListener("DOMContentLoaded", loadStaticRoadKMZ);
+}
+
 /* ------------------------------------------------
    3️⃣ ADD ROAD POLYGON + MARKER TO CESIUM
 ------------------------------------------------ */
@@ -66,11 +207,10 @@ function addRoadPolygonTo3D(feature) {
   const ds = ensureRoadsDataSource();
 
   // Polygon coordinates
-  const coords = feature.geometry.coordinates[0].flat();
+  const rawCoords = feature.geometry.coordinates[0];
+  const coords = rawCoords.flat();
 
-  // ---- POLYGON ---- (added to roadsDataSource, not viewer.entities,
-  // so it belongs to the "roads" layer and the Layer Manager toggle
-  // can show/hide it — visible fill now, houses-jaisa dikhne ke liye)
+  // ---- POLYGON ---- (added to roadsDataSource)
   const polygonEntity = ds.entities.add({
     polygon: {
       hierarchy: Cesium.Cartesian3.fromDegreesArray(coords),
@@ -82,31 +222,45 @@ function addRoadPolygonTo3D(feature) {
     }
   });
 
-  // 🔥 VERY IMPORTANT: PropertyBag
+  const videoUrl = feature.properties.videoUrl || "https://everythingyoupost.com/stream/?stream=cam";
+
+  // PropertyBag for polygon click
   polygonEntity.properties = new Cesium.PropertyBag({
-    hasVideo: feature.properties.hasVideo === true,
-    videoUrl: feature.properties.videoUrl || ""
+    hasVideo: feature.properties.hasVideo !== false,
+    videoUrl: videoUrl
   });
 
   polygonEntity.allowPicking = true;
 
-  // ---- CENTER MARKER (CLICK FRIENDLY) ----
-  if (feature.properties.centroid) {
-    ds.entities.add({
-      position: Cesium.Cartesian3.fromDegrees(
-        feature.properties.centroid[0],
-        feature.properties.centroid[1]
-      ),
+  // ---- CENTER MARKER (CLICKABLE CAMERA PIN ICON) ----
+  let centroid = feature.properties.centroid;
+  if (!centroid || !Array.isArray(centroid) || centroid.length < 2) {
+    let sumLng = 0, sumLat = 0;
+    rawCoords.forEach(([lng, lat]) => {
+      sumLng += lng;
+      sumLat += lat;
+    });
+    if (rawCoords.length > 0) {
+      centroid = [sumLng / rawCoords.length, sumLat / rawCoords.length];
+    }
+  }
+
+  if (centroid && centroid.length >= 2) {
+    const pinEntity = ds.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(centroid[0], centroid[1]),
       billboard: {
-        image: "/icons/survey-pin.png",
-        width: 28,
-        height: 28
+        image: ROAD_CAMERA_PIN_ICON,
+        width: 32,
+        height: 32,
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY
       },
       properties: new Cesium.PropertyBag({
-        hasVideo: feature.properties.hasVideo === true,
-        videoUrl: feature.properties.videoUrl || ""
+        hasVideo: feature.properties.hasVideo !== false,
+        videoUrl: videoUrl
       })
     });
+    pinEntity.allowPicking = true;
   }
 }
 
@@ -158,9 +312,13 @@ function showPopup(videoUrl) {
 
   popup.classList.remove("hidden");
 
+  const targetUrl = (videoUrl && !videoUrl.includes("13.127.220.89"))
+    ? videoUrl
+    : "https://everythingyoupost.com/stream/?stream=cam";
+
   // IMPORTANT: reset first
   iframe.src = "";
-  iframe.src = videoUrl;
+  iframe.src = targetUrl;
 }
 
 

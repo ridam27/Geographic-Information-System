@@ -31,7 +31,7 @@ app.use(cors({
     if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
-      callback(null, false);
+      callback(new Error("CORS blocked origin: " + origin));
     }
   },
   credentials: true,
