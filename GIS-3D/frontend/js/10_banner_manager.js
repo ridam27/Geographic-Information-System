@@ -109,14 +109,28 @@ function renderSelectedHouseData(houseId, inputHouseData = null) {
     ]) || "-";
 
   const propertyName =
-    pickValue(houseData, ["Name of the Property", "propertyName", "propertyCategory"]) || "-";
+    pickValue(houseData, [
+      "Name of the Property",
+      "propertyName",
+      "propertyCategory",
+      "usageType",
+      "Usage of Property",
+    ]) || "-";
 
   const type =
-    pickValue(houseData, ["Nature of Property", "natureOfProperty", "ownerType", "propertyCategory"]) ||
-    "-";
+    pickValue(houseData, [
+      "Nature of Property",
+      "natureOfProperty",
+      "ownerType",
+      "propertyCategory",
+    ]) || "-";
 
   const address =
-    pickValue(houseData, ["Address of Property", "propertyAddress", "address"]) || "-";
+    pickValue(houseData, [
+      "Address of Property",
+      "propertyAddress",
+      "address",
+    ]) || "-";
 
   idEl.textContent = safeId;
   ownerEl.textContent = owner;
