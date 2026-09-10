@@ -12,6 +12,9 @@
   --accent: #3d7fe8;
   --accent-soft: #3d7fe81c;
   --accent-2: #4f8ab3;
+  --brand-cyan: #22d3ee;
+  --brand-amber: #f5a524;
+  --brand-coral: #f43f5e;
   --radius: 7px;
   --radius-sm: 5px;
   --font-display: "Space Grotesk", sans-serif;
@@ -77,11 +80,22 @@ body {
 }
 
 .sidebar__mark {
-  color: var(--accent);
+  color: var(--brand-cyan);
   display: flex;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 8px rgba(61, 127, 232, 0.22));
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.25));
 }
+
+/* GEOLITH PORTAL wordmark — segment colours. Sizing comes from whatever
+   title class (sidebar__title / authcard__title) sits alongside .brandword. */
+.brandword {
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.brandword__geo { color: var(--brand-cyan); }
+.brandword__lith { color: var(--brand-amber); }
+.brandword__portal { color: var(--text); font-weight: 600; margin-left: 0.4em; }
 
 .sidebar__brandtext {
   display: flex;

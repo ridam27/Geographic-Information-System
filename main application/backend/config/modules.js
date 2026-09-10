@@ -1,5 +1,5 @@
 /**
- * Canonical registry of every module shown in the GeoHub console
+ * Canonical registry of every module shown in the GEOLITH PORTAL console
  * (mirrors `src/data/modules.js` on the frontend by `id`). This is the
  * single source of truth for role-based access control: every
  * `AppPermission` row is keyed by one of these `id`s.

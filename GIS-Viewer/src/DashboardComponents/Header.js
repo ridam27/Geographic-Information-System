@@ -114,7 +114,7 @@ const Header = ({ toggleDarkMode, darkMode }) => {
       color: darkMode ? "#ffffff" : "#333333"
     }}
   >
-    Cojag
+    GIOLITH
     <Typography 
       component="span" 
       sx={{ 

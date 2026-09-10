@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BrandMark, BrandWord } from "./BrandLogo";
 import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
@@ -70,14 +71,12 @@ export default function LoginPage() {
       <div className="authcard" role="main" aria-labelledby="authTitle">
         <div className="authcard__brand">
           <span className="sidebar__mark" aria-hidden="true">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="9.2" stroke="currentColor" strokeWidth="1.4" />
-              <circle cx="12" cy="12" r="2.4" fill="currentColor" />
-              <path d="M12 1v4M12 19v4M1 12h4M19 12h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
+            <BrandMark size={30} />
           </span>
           <div>
-            <h1 id="authTitle" className="authcard__title">GeoHub</h1>
+            <h1 id="authTitle" className="authcard__title brandword">
+              <BrandWord />
+            </h1>
             <p className="authcard__subtitle">Unified GIS Console - Master Sign-In</p>
           </div>
         </div>

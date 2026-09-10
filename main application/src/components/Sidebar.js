@@ -1,5 +1,6 @@
 import MODULES from "../data/modules";
 import { ModuleIcon, IconShield } from "./Icons";
+import { BrandMark, BrandWord } from "./BrandLogo";
 import { useAuth } from "../context/AuthContext";
 
 export default function Sidebar({ activeId, onSelect, collapsed, onToggle }) {
@@ -14,14 +15,12 @@ export default function Sidebar({ activeId, onSelect, collapsed, onToggle }) {
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
       <div className="sidebar__brand">
         <span className="sidebar__mark" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="9.2" stroke="currentColor" strokeWidth="1.4" />
-            <circle cx="12" cy="12" r="2.4" fill="currentColor" />
-            <path d="M12 1v4M12 19v4M1 12h4M19 12h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-          </svg>
+          <BrandMark size={20} />
         </span>
         <div className={`sidebar__brandtext ${collapsed ? "sidebar__brandtext--collapsed" : ""}`}>
-          <span className="sidebar__title">GeoHub</span>
+          <span className="sidebar__title brandword">
+            <BrandWord />
+          </span>
           <span className="sidebar__subtitle">Unified GIS Console</span>
         </div>
         <div className="sidebar__toggleDock">

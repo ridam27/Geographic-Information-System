@@ -37,14 +37,14 @@ const Footer = () => {
                 <i className="ion-ios-email-outline"></i>
                 <h3>Email</h3>
                 <p>
-                  <a href="mailto:info@cojagtech.com">info@cojagtech.com</a>
+                  <a href="mailto:info@geolithsystems.com">info@geolithsystems.com</a>
                 </p>
               </div>
             </div>
           </div>
         </div>
       </section>
-      <p>© Copyright 2024 COJAG. All Rights Reserved</p>
+      <p>© Copyright 2024 GIOLITH. All Rights Reserved</p>
       <p>An ISO 9001:2015, ISO 45001:2018, ISO 27001:2022, MSME, Startup India Certified company</p>
     </footer>
   );
