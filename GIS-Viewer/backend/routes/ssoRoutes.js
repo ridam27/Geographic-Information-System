@@ -78,7 +78,11 @@ router.get('/callback', async (req, res) => {
 
     req.session.user = { _id: user._id, username: user.username, email: user.email };
 
-    return res.redirect(FRONTEND_HOME);
+    // Users arriving via the Main application's master login are already
+    // authenticated — skip the marketing/hero landing page and the login
+    // form entirely, and drop them straight into the Location tab.
+    const dashboardUrl = `${FRONTEND_HOME.replace(/\/+$/, '')}/DashboardApp?tab=Location`;
+    return res.redirect(dashboardUrl);
   } catch (err) {
     console.error('[sso/callback] error:', err.message);
     return res.status(502).send('Could not verify sign-in with the main portal. Please try again.');

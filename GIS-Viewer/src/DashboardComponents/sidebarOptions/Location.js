@@ -9,6 +9,14 @@ const MapPage = () => {
   const [position, setPosition] = usePersistentState('location-position', [21.1498, 79.0806]); // Default location (Nagpur, India)
   const [zoom, setZoom] = usePersistentState('location-zoom', 5); // Default zoom level
 
+  // Esri's World_Imagery only has real tile data up to zoom 19 — past that
+  // it has nothing to serve (hence the "Map data not yet available" tiles).
+  // MAX_NATIVE_ZOOM is the real tile ceiling; MAX_ZOOM is how far the user
+  // can still zoom in, with Leaflet upscaling the last real tile (digital
+  // zoom) for anything beyond MAX_NATIVE_ZOOM.
+  const MAX_NATIVE_ZOOM = 19;
+  const MAX_ZOOM = 21;
+
   // Default marker icon
   const defaultIcon = new L.Icon({
     iconUrl: require('leaflet/dist/images/marker-icon.png'), // Default marker icon path
@@ -19,7 +27,7 @@ const MapPage = () => {
 
   const updateMap = (lat, lng) => {
     setPosition([lat, lng]);
-    setZoom(18); // Adjust the zoom level when a new location is provided
+    setZoom(MAX_NATIVE_ZOOM); // Jump to the tile server's real max zoom, not an arbitrary fixed level
   };
 
   const MapUpdater = ({ position, zoom }) => {
@@ -56,34 +64,42 @@ const MapPage = () => {
         <button onClick={handleGoClick}>Go</button>
       </div>
       <div className="map-wrapper">
-        <MapContainer center={position} zoom={zoom} style={{ height: '100%', width: '100%' }}>
+        <MapContainer center={position} zoom={zoom} maxZoom={MAX_ZOOM} style={{ height: '100%', width: '100%' }}>
           <LayersControl position="topright">
             {/* Satellite imagery without labels */}
             <LayersControl.BaseLayer name="Satellite">
               <TileLayer
                 url="https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                 attribution='&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+                maxZoom={MAX_ZOOM}
+                maxNativeZoom={MAX_NATIVE_ZOOM}
               />
             </LayersControl.BaseLayer>
-            
+
             {/* Default: Satellite imagery with labels */}
             <LayersControl.BaseLayer checked name="Satellite with Labels">
               <TileLayer
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                 attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+                maxZoom={MAX_ZOOM}
+                maxNativeZoom={MAX_NATIVE_ZOOM}
               />
               <TileLayer
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
                 attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
                 zIndex={10}
+                maxZoom={MAX_ZOOM}
+                maxNativeZoom={MAX_NATIVE_ZOOM}
               />
             </LayersControl.BaseLayer>
-            
+
             {/* Standard map option */}
             <LayersControl.BaseLayer name="Street Map">
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                maxZoom={MAX_ZOOM}
+                maxNativeZoom={19}
               />
             </LayersControl.BaseLayer>
           </LayersControl>

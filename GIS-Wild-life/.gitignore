@@ -22,3 +22,20 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ---------------------------------------------------------------------------
+# Large binary media — DO NOT commit. ~8.8 GB of geotagged field photos and
+# safari videos live under public/media/. These belong in object storage /
+# a CDN, not in git history. Keep them locally for dev; serve from a bucket
+# in production.
+#
+# NOTE: 125 files already committed under public/media/photos/ are NOT
+# untracked by this rule — they need `git rm --cached` to remove from the
+# index (kept on disk). We'll do that as a separate step.
+# ---------------------------------------------------------------------------
+public/media/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm

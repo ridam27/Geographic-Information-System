@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Polyline, CircleMarker, Tooltip } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -6,12 +6,11 @@ import 'leaflet/dist/leaflet.css';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   DoorOpen, Compass, Flame, Footprints, Eye, Waves, TreePine,
-  Ticket, Car, Coffee, HeartPulse, Info, MapPin, Navigation, Sparkles, Bus
+  Ticket, Car, Coffee, HeartPulse, Info, MapPin, Navigation, Sparkles, Bus, Globe, ArrowLeft
 } from 'lucide-react';
 import { TigerIcon, LeopardIcon, BearIcon, DeerIcon } from './AnimalIcons';
 
-import { ZOO_CENTER, zooLocations, GOREWADA_MAIN_HUB } from '../data/zooLocations';
-import { geotaggedMedia } from '../data/geotaggedMedia';
+import { NAGPUR_REGION_CENTER, NAGPUR_REGION_ZOOM, ZOOS, getAllZooHubs } from '../data/zooRegistry';
 import { findClosestProgressOnTrack } from '../utils/gpsTrackUtils';
 import MapControls from './MapControls';
 import MapDetailsModal from './MapDetailsModal';
@@ -43,7 +42,7 @@ const getTileLayerUrl = (mapType, showStreetLabels) => {
   }
 };
 
-// Helper to render accurate single-color vector icons (Tiger, Leopard, Bear, Deer, Facilities)
+// Helper to render accurate vector icons
 const renderLocationIcon = (name, size = 15) => {
   switch (name) {
     case 'Tiger': return <TigerIcon size={size} />;
@@ -58,6 +57,7 @@ const renderLocationIcon = (name, size = 15) => {
     case 'Car': return <Car size={size} />;
     case 'Coffee': return <Coffee size={size} />;
     case 'HeartPulse': return <HeartPulse size={size} />;
+    case 'Waves': return <Waves size={size} />;
     case 'Info': return <Info size={size} />;
     default: return <MapPin size={size} />;
   }
@@ -69,7 +69,6 @@ const PanToSelectedLocation = ({ selectedMedia, selectedLocation, userPin }) => 
   const isInitialMount = useRef(true);
 
   useEffect(() => {
-    // Preserve restored map position on page reload/refresh
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
@@ -99,44 +98,138 @@ const PanToSelectedLocation = ({ selectedMedia, selectedLocation, userPin }) => 
   return null;
 };
 
-// Component to handle recentering zoo with smooth cinematic fly
-const RecenterHandler = ({ triggerRecenter }) => {
+// Component to handle recentering with smooth cinematic fly
+const RecenterHandler = ({ flyTarget }) => {
   const map = useMap();
   useEffect(() => {
-    if (triggerRecenter) {
-      map.flyTo(ZOO_CENTER, 15, { duration: 2.0, easeLinearity: 0.25 });
+    if (flyTarget && Array.isArray(flyTarget.center)) {
+      map.flyTo(flyTarget.center, flyTarget.zoom || 16, { duration: flyTarget.duration || 3.2, easeLinearity: 0.2 });
     }
-  }, [triggerRecenter, map]);
+  }, [flyTarget, map]);
   return null;
 };
 
+// Main Hub Marker for Zoom Level <= 11 (Unified Starting Map)
+const createZooHubIcon = (hub, isMaharajbagh = false) => {
+  const themeClass = isMaharajbagh ? 'maharajbagh-hub' : 'gorewada-hub';
+  const displayName = isMaharajbagh ? 'Maharajbagh Zoo' : 'Gorewada Zoo';
+  const iconMarkup = renderToStaticMarkup(
+    <div className={`zoo-hub-marker ${themeClass}`}>
+      <div className="hub-radar-ping"></div>
+      <div className="hub-beacon-pin">
+        <span className="hub-icon-svg">
+          <Compass size={20} />
+        </span>
+      </div>
+      <div className="hub-beacon-label">
+        <span className="hub-title">{displayName}</span>
+        <span className="hub-subtitle">CLICK TO ENTER ZOO ➔</span>
+      </div>
+    </div>
+  );
+
+  return L.divIcon({
+    html: iconMarkup,
+    className: 'custom-hub-beacon-container',
+    iconSize: [240, 50],
+    iconAnchor: [24, 25],
+    popupAnchor: [0, -25]
+  });
+};
+
+// Dedicated Zoo Hub Marker Component: Clicking smoothly flies directly into the selected zoo
+const ZooHubMarker = ({ zooId, isMaharajbagh, onEnterZoo }) => {
+  const map = useMap();
+  const zoo = ZOOS[zooId];
+  const markerRef = useRef(null);
+
+  const handleMarkerClick = useCallback((e) => {
+    if (e) {
+      if (e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
+      if (e.stopPropagation) e.stopPropagation();
+    }
+    if (onEnterZoo) {
+      onEnterZoo(zooId, map);
+    }
+  }, [map, zooId, onEnterZoo]);
+
+  useEffect(() => {
+    const marker = markerRef.current;
+    if (marker) {
+      const el = marker.getElement();
+      if (el) {
+        L.DomEvent.disableClickPropagation(el);
+        L.DomEvent.disableScrollPropagation(el);
+
+        const onTrigger = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          handleMarkerClick(e);
+        };
+
+        el.addEventListener('click', onTrigger);
+        el.addEventListener('pointerdown', onTrigger);
+        el.addEventListener('touchend', onTrigger);
+
+        return () => {
+          el.removeEventListener('click', onTrigger);
+          el.removeEventListener('pointerdown', onTrigger);
+          el.removeEventListener('touchend', onTrigger);
+        };
+      }
+    }
+  }, [handleMarkerClick]);
+
+  return (
+    <Marker
+      ref={markerRef}
+      position={zoo.center}
+      icon={createZooHubIcon(zoo.hub, isMaharajbagh)}
+      eventHandlers={{
+        click: (e) => {
+          handleMarkerClick(e);
+        }
+      }}
+    >
+      <Tooltip direction="top" offset={[0, -20]} opacity={0.95}>
+        <div style={{ fontWeight: '700', fontSize: '13px', color: isMaharajbagh ? '#38bdf8' : '#10b981' }}>
+          📍 {zoo.name}
+        </div>
+      </Tooltip>
+    </Marker>
+  );
+};
+
 // Component to capture direct map clicks for Directory Pinning & GPS route seeking
-const MapClickHandler = ({ isPinningMode, setUserPin, setPinningMode, setSelectedLocation, selectedMedia, onSeekToRoutePoint, liveVideoTracking }) => {
+const MapClickHandler = ({ isPinningMode, setUserPin, setPinningMode, setSelectedLocation, selectedMedia, onSeekToRoutePoint, liveVideoTracking, activeZooId }) => {
   useMapEvents({
     click(e) {
+      // ONLY pin a location if Pin Location mode was explicitly activated by the user!
+      if (!isPinningMode) {
+        return;
+      }
+
       const clickLat = e.latlng.lat;
       const clickLng = e.latlng.lng;
       setSelectedLocation(null);
       setUserPin({ lat: clickLat, lng: clickLng });
-      if (isPinningMode) {
-        setPinningMode(false);
-      }
+      setPinningMode(false);
 
-      // If a video is currently open, seeking dynamically to the pinned/clicked location along the route
       if (selectedMedia?.type === 'video' && onSeekToRoutePoint) {
         const activeTrack = (liveVideoTracking?.track && Array.isArray(liveVideoTracking.track) && liveVideoTracking.track.length > 0)
           ? liveVideoTracking.track
           : (selectedMedia?.track && Array.isArray(selectedMedia.track) && selectedMedia.track.length > 0)
             ? selectedMedia.track
             : [
-                [selectedMedia.latitude || 21.1946, selectedMedia.longitude || 79.0103],
-                [(selectedMedia.latitude || 21.1946) + 0.0003, (selectedMedia.longitude || 79.0103) + 0.0003],
-                [(selectedMedia.latitude || 21.1946) + 0.0006, (selectedMedia.longitude || 79.0103) + 0.0002],
-                [(selectedMedia.latitude || 21.1946) + 0.0008, (selectedMedia.longitude || 79.0103) + 0.0005]
+                [selectedMedia.latitude, selectedMedia.longitude],
+                [selectedMedia.latitude + 0.0003, selectedMedia.longitude + 0.0003],
+                [selectedMedia.latitude + 0.0006, selectedMedia.longitude + 0.0002],
+                [selectedMedia.latitude + 0.0008, selectedMedia.longitude + 0.0005]
               ];
 
         const { progressRatio, closestPoint, distanceMeters } = findClosestProgressOnTrack(activeTrack, clickLat, clickLng);
-        // If clicked on or near the route (within 400m tolerance or when in pinning mode)
         if (distanceMeters < 400 || isPinningMode) {
           onSeekToRoutePoint(progressRatio, closestPoint);
         }
@@ -155,7 +248,7 @@ const userPinIcon = L.divIcon({
   popupAnchor: [0, -32]
 });
 
-// Tracks real-time map center and zoom level from Leaflet instance
+// Tracks real-time map center and zoom level
 const MapStateTracker = ({ onMapChange }) => {
   const map = useMap();
   useMapEvents({
@@ -171,33 +264,7 @@ const MapStateTracker = ({ onMapChange }) => {
   return null;
 };
 
-// Main Hub Marker for Zoom Level <= 10 (Single clean Gorewada Zoo view)
-const createGorewadaMainHubIcon = () => {
-  const iconMarkup = renderToStaticMarkup(
-    <div className="gorewada-hub-marker">
-      <div className="hub-radar-ping"></div>
-      <div className="hub-beacon-pin">
-        <span className="hub-icon-svg">
-          <Compass size={22} />
-        </span>
-      </div>
-      <div className="hub-beacon-label">
-        <span className="hub-title">{GOREWADA_MAIN_HUB.name}</span>
-        <span className="hub-subtitle">Click to Zoom In</span>
-      </div>
-    </div>
-  );
-
-  return L.divIcon({
-    html: iconMarkup,
-    className: 'custom-hub-beacon-container',
-    iconSize: [160, 60],
-    iconAnchor: [80, 30],
-    popupAnchor: [0, -32]
-  });
-};
-
-// Create high-precision, single-color monochrome GIS beacon icons
+// Create high-precision GIS beacon icons for individual zoo enclosures & facilities
 const createZooLocationIcon = (location, isSelected) => {
   const isEntrance = location.category === 'entrance';
 
@@ -248,8 +315,7 @@ const createLiveVehicleIcon = (lat, lng) => {
   });
 };
 
-// Dedicated Subcomponent for Dynamic Video GPS Tracking Route Progress
-// Isolates frequent coordinate updates to prevent re-rendering the whole map tree
+// Subcomponent for Dynamic Video GPS Tracking Route Progress
 const LiveVideoRouteLayer = React.memo(({ liveVideoTracking, selectedMedia, onSeekToRoutePoint }) => {
   if (selectedMedia?.type !== 'video') return null;
 
@@ -258,10 +324,10 @@ const LiveVideoRouteLayer = React.memo(({ liveVideoTracking, selectedMedia, onSe
     : (selectedMedia?.track && Array.isArray(selectedMedia.track) && selectedMedia.track.length > 0)
       ? selectedMedia.track
       : [
-          [selectedMedia.latitude || 21.1946, selectedMedia.longitude || 79.0103],
-          [(selectedMedia.latitude || 21.1946) + 0.0003, (selectedMedia.longitude || 79.0103) + 0.0003],
-          [(selectedMedia.latitude || 21.1946) + 0.0006, (selectedMedia.longitude || 79.0103) + 0.0002],
-          [(selectedMedia.latitude || 21.1946) + 0.0008, (selectedMedia.longitude || 79.0103) + 0.0005]
+          [selectedMedia.latitude, selectedMedia.longitude],
+          [selectedMedia.latitude + 0.0003, selectedMedia.longitude + 0.0003],
+          [selectedMedia.latitude + 0.0006, selectedMedia.longitude + 0.0002],
+          [selectedMedia.latitude + 0.0008, selectedMedia.longitude + 0.0005]
         ];
 
   const currentPoint = (liveVideoTracking?.currentPoint && Array.isArray(liveVideoTracking.currentPoint) && Number.isFinite(liveVideoTracking.currentPoint[0]))
@@ -289,7 +355,6 @@ const LiveVideoRouteLayer = React.memo(({ liveVideoTracking, selectedMedia, onSe
 
   return (
     <>
-      {/* Invisible wider clickable hitbox for effortless clicking anywhere on route */}
       <Polyline
         positions={activeTrack}
         pathOptions={{
@@ -304,7 +369,6 @@ const LiveVideoRouteLayer = React.memo(({ liveVideoTracking, selectedMedia, onSe
         }}
       />
 
-      {/* 1. Remaining GPS Track (🔴 RED): Portion of video route not yet watched */}
       {remainingPath && remainingPath.length > 1 && (
         <Polyline
           positions={remainingPath}
@@ -321,13 +385,12 @@ const LiveVideoRouteLayer = React.memo(({ liveVideoTracking, selectedMedia, onSe
         >
           <Tooltip direction="top" sticky opacity={0.9}>
             <span style={{ fontSize: '11px', fontWeight: '600' }}>
-              📍 Click / Pin here to start video from this GPS position
+              📍 Click / Pin here to jump video to this GPS position
             </span>
           </Tooltip>
         </Polyline>
       )}
 
-      {/* 2. Watched GPS Track (🟢 GREEN): Portion of video route already watched */}
       {watchedPath && watchedPath.length > 1 && (
         <Polyline
           positions={watchedPath}
@@ -350,7 +413,6 @@ const LiveVideoRouteLayer = React.memo(({ liveVideoTracking, selectedMedia, onSe
         </Polyline>
       )}
 
-      {/* Start Point Marker (🟢 Green) */}
       {startPt && Number.isFinite(startPt[0]) && Number.isFinite(startPt[1]) && (
         <CircleMarker
           center={startPt}
@@ -376,7 +438,6 @@ const LiveVideoRouteLayer = React.memo(({ liveVideoTracking, selectedMedia, onSe
         </CircleMarker>
       )}
 
-      {/* End Point Marker (🔴 Red) */}
       {endPt && Number.isFinite(endPt[0]) && Number.isFinite(endPt[1]) && activeTrack.length > 1 && (
         <CircleMarker
           center={endPt}
@@ -402,7 +463,6 @@ const LiveVideoRouteLayer = React.memo(({ liveVideoTracking, selectedMedia, onSe
         </CircleMarker>
       )}
 
-      {/* 3. Live Moving Vehicle GPS Position Marker with glowing beacon & coordinates */}
       {currentPoint && Number.isFinite(currentPoint[0]) && Number.isFinite(currentPoint[1]) && (
         <Marker
           position={currentPoint}
@@ -424,8 +484,7 @@ const LiveVideoRouteLayer = React.memo(({ liveVideoTracking, selectedMedia, onSe
 LiveVideoRouteLayer.displayName = 'LiveVideoRouteLayer';
 
 // Spatial Viewport Lazy-Loading Component for Zoom 16+ Media Markers
-// Culls off-screen markers to eliminate rendering overhead & memory spikes
-const LazyViewportMediaMarkers = React.memo(({ showMediaMarkers, currentZoom, selectedMedia, setSelectedMedia, setUserPin }) => {
+const LazyViewportMediaMarkers = React.memo(({ showMediaMarkers, currentZoom, activeMedia, selectedMedia, setSelectedMedia, setUserPin }) => {
   const map = useMap();
   const [mapBounds, setMapBounds] = useState(() => {
     try {
@@ -449,12 +508,12 @@ const LazyViewportMediaMarkers = React.memo(({ showMediaMarkers, currentZoom, se
   });
 
   const visibleMarkers = React.useMemo(() => {
-    if (!showMediaMarkers || currentZoom < 16) return [];
-    if (!mapBounds) return geotaggedMedia;
-    return geotaggedMedia.filter(media => {
+    if (!showMediaMarkers || currentZoom < 16 || !activeMedia || activeMedia.length === 0) return [];
+    if (!mapBounds) return activeMedia;
+    return activeMedia.filter(media => {
       return mapBounds.contains([media.latitude, media.longitude]);
     });
-  }, [showMediaMarkers, currentZoom, mapBounds]);
+  }, [showMediaMarkers, currentZoom, activeMedia, mapBounds]);
 
   if (!showMediaMarkers || currentZoom < 16 || visibleMarkers.length === 0) return null;
 
@@ -491,19 +550,24 @@ const MapView = ({
   showZooLabels, setShowZooLabels,
   showMediaMarkers, setShowMediaMarkers,
   liveVideoTracking,
-  onSeekToRoutePoint
+  onSeekToRoutePoint,
+  activeZooId,
+  activeZoo,
+  activeLocations = [],
+  activeMedia = [],
+  onEnterZoo,
+  onBackToCombinedMap,
+  onMapStateChange
 }) => {
-  // Normalize map center and zoom level safely
   const validCenter = Array.isArray(mapCenter) && Number.isFinite(mapCenter[0]) && Number.isFinite(mapCenter[1])
     ? mapCenter
-    : (mapCenter?.lat && mapCenter?.lng ? [mapCenter.lat, mapCenter.lng] : ZOO_CENTER);
+    : (mapCenter?.lat && mapCenter?.lng ? [mapCenter.lat, mapCenter.lng] : NAGPUR_REGION_CENTER);
 
-  const validZoom = typeof mapZoom === 'number' && Number.isFinite(mapZoom) ? mapZoom : 15;
+  const validZoom = typeof mapZoom === 'number' && Number.isFinite(mapZoom) ? mapZoom : NAGPUR_REGION_ZOOM;
 
-  // Zoom level state (synced with mapZoom prop)
   const [currentZoom, setCurrentZoom] = useState(validZoom);
   const [isLayersOpen, setIsLayersOpen] = useState(false);
-  const [recenterTrigger, setRecenterTrigger] = useState(0);
+  const [flyTarget, setFlyTarget] = useState(null);
 
   useEffect(() => {
     if (mapZoom !== undefined && Number.isFinite(mapZoom)) {
@@ -515,37 +579,144 @@ const MapView = ({
     setSelectedLocation(location);
   };
 
-  const handleRecenterZoo = () => {
-    setRecenterTrigger(prev => prev + 1);
-  };
+  const handleEnterZooDirect = useCallback((zooId, mapInstance) => {
+    const targetZoo = ZOOS[zooId];
+    if (!targetZoo) return;
+
+    if (onEnterZoo) {
+      onEnterZoo(zooId);
+    }
+
+    if (mapInstance) {
+      mapInstance.flyTo(targetZoo.center, 16, {
+        duration: 2.0,
+        easeLinearity: 0.25
+      });
+    } else {
+      setFlyTarget({
+        center: targetZoo.center,
+        zoom: 16,
+        duration: 2.0,
+        timestamp: Date.now()
+      });
+    }
+  }, [onEnterZoo]);
+
+  const handleBackToCombinedMapDirect = useCallback(() => {
+    if (onBackToCombinedMap) {
+      onBackToCombinedMap();
+    }
+
+    setFlyTarget({
+      center: NAGPUR_REGION_CENTER,
+      zoom: NAGPUR_REGION_ZOOM,
+      duration: 1.8,
+      timestamp: Date.now()
+    });
+  }, [onBackToCombinedMap]);
 
   const activeTileUrl = getTileLayerUrl(mapType, showStreetLabels);
+  const isDetailedZooMode = activeZooId !== null && activeZoo !== null;
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {/* Top Interactive Zone Quick Bar */}
-      <div className="zone-quick-bar glass-panel" role="toolbar" aria-label="Safari Zone Quick Explorer">
-        <div className="quick-bar-label">
-          <Navigation size={14} style={{ color: '#10b981' }} />
-          <span>Gorewada Explorer:</span>
+      {/* Top Interactive Zone Quick Bar - Appears ONLY when inside a detailed zoo */}
+      {isDetailedZooMode && activeLocations.length > 0 && (
+        <div 
+          className="zone-quick-bar glass-panel animate-fade-in" 
+          role="toolbar" 
+          aria-label="Zone Quick Explorer"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button 
+            type="button"
+            className="zone-back-btn" 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleBackToCombinedMapDirect();
+            }}
+            title="Return to Combined Map"
+          >
+            <ArrowLeft size={14} />
+            <span>All Zoos</span>
+          </button>
+          <div className="quick-bar-divider" />
+          <div className="quick-bar-label">
+            <Navigation size={14} style={{ color: activeZoo?.themeColor || '#10b981' }} />
+            <span>{activeZoo?.shortName || "Zoo"} Explorer:</span>
+          </div>
+          <div className="quick-bar-chips">
+            {activeLocations.map(loc => {
+              const isGorewadaVideo = activeZooId === 'gorewada' && (
+                loc.id.includes('safari') || loc.id.includes('tiger') || loc.id.includes('leopard') || loc.id.includes('bear')
+              );
+
+              return (
+                <button
+                  type="button"
+                  key={`quick-${loc.id}`}
+                  className={`zone-chip ${selectedLocation?.id === loc.id ? 'active' : ''} cat-${loc.category}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleZoneChipClick(loc);
+                  }}
+                  aria-label={`Explore zone: ${loc.name}`}
+                >
+                  <span className="chip-icon">{renderLocationIcon(loc.iconName, 13)}</span>
+                  <span>{loc.shortName}</span>
+                  {isGorewadaVideo && (
+                    <span className="chip-video-indicator">🎥 Video</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div className="quick-bar-chips">
-          {zooLocations.map(loc => (
-            <button
-              key={`quick-${loc.id}`}
-              className={`zone-chip ${selectedLocation?.id === loc.id ? 'active' : ''} cat-${loc.category}`}
-              onClick={() => handleZoneChipClick(loc)}
-              aria-label={`Explore zone: ${loc.name}`}
-            >
-              <span className="chip-icon">{renderLocationIcon(loc.iconName, 13)}</span>
-              <span>{loc.shortName}</span>
-              {(loc.id === 'leopard-safari' || loc.id === 'bear-deer-safari' || loc.id === 'safari-bus-boarding' || loc.id === 'tiger-safari-central-gate') && (
-                <span className="chip-video-indicator">🎥 Video</span>
-              )}
-            </button>
-          ))}
+      )}
+
+      {/* Floating Interactive Zoo Selector on Combined Overview Map */}
+      {activeZooId === null && (
+        <div 
+          className="overview-zoo-selector glass-panel animate-fade-in"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button 
+            type="button"
+            className="overview-zoo-card gorewada-card"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEnterZooDirect('gorewada');
+            }}
+            title="Explore Gorewada Zoo"
+          >
+            <div className="card-beacon-dot gorewada-dot" />
+            <div className="card-info">
+              <span className="card-title">Gorewada Zoo</span>
+              <span className="card-subtitle">CLICK TO ENTER ➔</span>
+            </div>
+          </button>
+          <div className="overview-card-divider" />
+          <button 
+            type="button"
+            className="overview-zoo-card maharajbagh-card"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEnterZooDirect('maharajbagh');
+            }}
+            title="Explore Maharajbagh Zoo"
+          >
+            <div className="card-beacon-dot maharajbagh-dot" />
+            <div className="card-info">
+              <span className="card-title">Maharajbagh Zoo</span>
+              <span className="card-subtitle">CLICK TO ENTER ➔</span>
+            </div>
+          </button>
         </div>
-      </div>
+      )}
 
       {/* Map Details / Layers Switcher Panel */}
       <MapDetailsModal
@@ -561,13 +732,15 @@ const MapView = ({
         setShowZooLabels={setShowZooLabels}
         showMediaMarkers={showMediaMarkers}
         setShowMediaMarkers={setShowMediaMarkers}
-        onRecenterZoo={handleRecenterZoo}
+        onRecenterZoo={handleEnterZooDirect}
+        onFlyToIndia={handleBackToCombinedMapDirect}
+        activeZooId={activeZooId}
       />
 
       <MapContainer
         center={validCenter}
         zoom={validZoom}
-        minZoom={2}
+        minZoom={3}
         maxZoom={20}
         worldCopyJump={true}
         style={{ height: '100%', width: '100%', cursor: isPinningMode ? 'crosshair' : 'pointer' }}
@@ -595,31 +768,48 @@ const MapView = ({
           toggleFullscreen={toggleFullscreen}
           isLayersOpen={isLayersOpen}
           setIsLayersOpen={setIsLayersOpen}
-        />
-
-        {/* Real-time Map Center and Zoom Level Tracker for State Persistence */}
-        <MapStateTracker
-          onMapChange={(center, zoom) => {
-            setMapCenter(center);
-            setMapZoom(zoom);
-            setCurrentZoom(zoom);
+          activeZooId={activeZooId}
+          onFlyToIndia={handleBackToCombinedMapDirect}
+          onRecenterActiveZoo={() => {
+            if (activeZooId) {
+              handleEnterZooDirect(activeZooId);
+            } else {
+              handleBackToCombinedMapDirect();
+            }
           }}
         />
 
-        <RecenterHandler triggerRecenter={recenterTrigger} />
+        {/* Real-time Map Center and Zoom Level Tracker */}
+        <MapStateTracker
+          onMapChange={(center, zoom) => {
+            setCurrentZoom(zoom);
+            if (onMapStateChange) {
+              onMapStateChange(center, zoom);
+            }
+          }}
+        />
 
-        <div style={{ position: 'absolute', top: 75, left: 20, zIndex: 1000 }}>
-          <PinLocation
-            isPinningMode={isPinningMode}
-            setPinningMode={setPinningMode}
-            userPin={userPin}
-            clearPin={() => {
-              setUserPin(null);
-              setSelectedLocation(null);
-              setSelectedMedia(null);
-            }}
-          />
-        </div>
+        <RecenterHandler flyTarget={flyTarget} />
+
+        {isDetailedZooMode && (
+          <div 
+            style={{ position: 'absolute', top: 75, left: 20, zIndex: 1000 }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <PinLocation
+              isPinningMode={isPinningMode}
+              setPinningMode={setPinningMode}
+              userPin={userPin}
+              clearPin={() => {
+                setUserPin(null);
+                setSelectedLocation(null);
+                setSelectedMedia(null);
+              }}
+            />
+          </div>
+        )}
 
         <MapClickHandler
           isPinningMode={isPinningMode}
@@ -629,50 +819,37 @@ const MapView = ({
           selectedMedia={selectedMedia}
           onSeekToRoutePoint={onSeekToRoutePoint}
           liveVideoTracking={liveVideoTracking}
+          activeZooId={activeZooId}
         />
 
-        {/* Cinematic Fly-To Handler */}
+        {/* Cinematic Fly-To Handler for Selected Location / Media */}
         <PanToSelectedLocation
           selectedMedia={selectedMedia}
           selectedLocation={selectedLocation}
           userPin={userPin}
         />
 
-        {/* 1. ZOOM LEVEL <= 10: Single Clean Main Gorewada Zoo Hub Marker */}
-        {currentZoom <= 10 && (
-          <Marker
-            position={[GOREWADA_MAIN_HUB.latitude, GOREWADA_MAIN_HUB.longitude]}
-            icon={createGorewadaMainHubIcon()}
-            eventHandlers={{
-              click: () => {
-                handleRecenterZoo();
-              }
-            }}
-          >
-            <Tooltip direction="top" offset={[0, -20]} opacity={0.95}>
-              <div style={{ fontWeight: '700', fontSize: '13px' }}>
-                {GOREWADA_MAIN_HUB.name} (Click to explore)
-              </div>
-            </Tooltip>
-            <Popup className="glass-popup">
-              <div style={{ textAlign: 'center', padding: '4px' }}>
-                <strong style={{ fontSize: '14px', color: '#10b981' }}>{GOREWADA_MAIN_HUB.name}</strong><br />
-                <p style={{ fontSize: '11px', marginTop: '4px', color: '#e2e8f0' }}>
-                  {GOREWADA_MAIN_HUB.description}
-                </p>
-                <div style={{ marginTop: '8px', fontSize: '11px', color: '#38bdf8', fontWeight: '600' }}>
-                  Click to zoom in to safari sectors
-                </div>
-              </div>
-            </Popup>
-          </Marker>
+        {/* 1. COMBINED OVERVIEW MAP (activeZooId === null): Show both Gorewada and Maharajbagh clickable cards */}
+        {activeZooId === null && (
+          <>
+            <ZooHubMarker
+              zooId="gorewada"
+              isMaharajbagh={false}
+              onEnterZoo={handleEnterZooDirect}
+            />
+            <ZooHubMarker
+              zooId="maharajbagh"
+              isMaharajbagh={true}
+              onEnterZoo={handleEnterZooDirect}
+            />
+          </>
         )}
 
-        {/* 2. ZOOM LEVEL 11+: Progressive Detail for Safari Zones & Facilities */}
-        {currentZoom > 10 && (showZooLabels || selectedLocation) && zooLocations
+        {/* 2. DETAILED ZOO MODE (activeZooId !== null): Progressive Enclosures & Facilities strictly for active zoo */}
+        {isDetailedZooMode && (showZooLabels || selectedLocation) && activeLocations
           .filter(loc => {
             if (selectedLocation?.id === loc.id) return true;
-            if (currentZoom >= 16) return true;
+            if (currentZoom >= 15) return true;
             return (loc.minZoom || 11) <= currentZoom;
           })
           .map(location => {
@@ -696,7 +873,7 @@ const MapView = ({
                 </Tooltip>
                 <Popup className="glass-popup">
                   <div style={{ padding: '4px' }}>
-                    <strong style={{ fontSize: '13px', color: '#10b981' }}>{location.name}</strong><br />
+                    <strong style={{ fontSize: '13px', color: activeZoo?.themeColor || '#10b981' }}>{location.name}</strong><br />
                     <span style={{ fontSize: '11px', color: '#94a3b8' }}>
                       GPS: {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
                     </span>
@@ -712,36 +889,39 @@ const MapView = ({
             );
           })}
 
-        {/* Render custom directory pin when dropped directly by user */}
-        {userPin && !selectedLocation && (
+        {/* Render custom directory pin when dropped directly by user inside detailed zoo */}
+        {isDetailedZooMode && userPin && !selectedLocation && (
           <Marker position={[userPin.lat, userPin.lng]} icon={userPinIcon}>
             <Popup className="glass-popup">
               <div style={{ textAlign: 'center', padding: '2px 4px' }}>
-                <strong style={{ color: '#10b981' }}>📍 Custom Point</strong><br />
+                <strong style={{ color: '#10b981' }}>📍 Custom Pin Point</strong><br />
                 <span style={{ fontSize: '11px', color: '#94a3b8' }}>
                   {userPin.lat.toFixed(6)}, {userPin.lng.toFixed(6)}
                 </span><br />
                 <span style={{ fontSize: '12px', fontWeight: '500', color: matchingMedia.length > 0 ? '#38bdf8' : '#f59e0b' }}>
                   {matchingMedia.length > 0
-                    ? `${matchingMedia.length} Media Items Nearby`
-                    : 'No geo-tagged media at this location'}
+                    ? `${matchingMedia.length} Photos Nearby`
+                    : 'No geotagged media at this spot'}
                 </span>
               </div>
             </Popup>
           </Marker>
         )}
 
-        {/* 3. ZOOM LEVEL 16+: Spatial Viewport Lazy-Loaded Markers across the Zoo */}
-        <LazyViewportMediaMarkers
-          showMediaMarkers={showMediaMarkers}
-          currentZoom={currentZoom}
-          selectedMedia={selectedMedia}
-          setSelectedMedia={setSelectedMedia}
-          setUserPin={setUserPin}
-        />
+        {/* 3. ZOOM LEVEL 16+: Spatial Viewport Lazy-Loaded Markers strictly across Active Zoo */}
+        {isDetailedZooMode && (
+          <LazyViewportMediaMarkers
+            showMediaMarkers={showMediaMarkers}
+            currentZoom={currentZoom}
+            activeMedia={activeMedia}
+            selectedMedia={selectedMedia}
+            setSelectedMedia={setSelectedMedia}
+            setUserPin={setUserPin}
+          />
+        )}
 
-        {/* Zoom < 16: Only show matching media when user explicitly selects a zone/pin */}
-        {showMediaMarkers && currentZoom < 16 && currentZoom > 10 && matchingMedia.length > 0 && (
+        {/* Show matching media when user selects a zone or drops a pin */}
+        {isDetailedZooMode && showMediaMarkers && currentZoom < 16 && matchingMedia.length > 0 && (
           <MarkerClusterGroup maxClusterRadius={35}>
             {matchingMedia.map(media => (
               <GeoMarker
@@ -755,24 +935,26 @@ const MapView = ({
         )}
 
         {/* Draw connection line between pin/location and selected media */}
-        {userPin && selectedMedia && (
+        {isDetailedZooMode && userPin && selectedMedia && (
           <Polyline
             positions={[
               [userPin.lat, userPin.lng],
               [selectedMedia.latitude, selectedMedia.longitude]
             ]}
-            color="#10b981"
+            color={activeZoo?.themeColor || '#10b981'}
             dashArray="5, 10"
             weight={3}
           />
         )}
 
-        {/* Dynamic Video GPS Tracking Route Progress */}
-        <LiveVideoRouteLayer
-          liveVideoTracking={liveVideoTracking}
-          selectedMedia={selectedMedia}
-          onSeekToRoutePoint={onSeekToRoutePoint}
-        />
+        {/* Dynamic Video GPS Tracking Route Progress for Active Zoo */}
+        {isDetailedZooMode && (
+          <LiveVideoRouteLayer
+            liveVideoTracking={liveVideoTracking}
+            selectedMedia={selectedMedia}
+            onSeekToRoutePoint={onSeekToRoutePoint}
+          />
+        )}
       </MapContainer>
     </div>
   );

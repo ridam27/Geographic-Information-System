@@ -72,6 +72,6 @@ export const getMediaCaptureTime = (media) => {
     const displayHour = hourNum % 12 || 12;
     return `${d} ${monthName} ${y}, ${displayHour}:${min}:${s} ${ampm}`;
   }
-  return 'Gorewada Zoo Field Survey';
+  return 'Zoo Field Geospatial Survey';
 };
 

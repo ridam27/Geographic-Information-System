@@ -28,7 +28,13 @@ const GeoMarker = ({ media, isSelected, onClick }) => {
       position={[media.latitude, media.longitude]} 
       icon={createMediaIcon(media.type, isSelected)}
       eventHandlers={{
-        click: () => onClick(media)
+        click: (e) => {
+          if (e) {
+            if (e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
+            if (e.stopPropagation) e.stopPropagation();
+          }
+          onClick(media);
+        }
       }}
     >
       <Tooltip direction="top" offset={[0, -18]} opacity={0.95}>

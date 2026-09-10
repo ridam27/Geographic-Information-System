@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { X, Compass, Play, Pause, Maximize2, Image as ImageIcon, Video as VideoIcon, Info, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Compass, Maximize2, Image as ImageIcon, Video as VideoIcon, Info, ChevronLeft, ChevronRight } from 'lucide-react';
 import MediaCard from './MediaCard';
 import { geotaggedMedia } from '../data/geotaggedMedia';
 import { calculateDistance } from '../utils/distance';
@@ -20,9 +20,10 @@ const MediaGallery = ({
   onGetDirections,
   onClose,
   onLiveVideoProgress,
-  seekVideoRequest
+  seekVideoRequest,
+  activeZoo
 }) => {
-  const isOpen = userPin !== null || selectedLocation !== null;
+  const isOpen = userPin !== null || selectedLocation !== null || selectedMedia !== null;
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [nearestPhoto, setNearestPhoto] = useState(null);
@@ -207,7 +208,7 @@ const MediaGallery = ({
         });
       }
 
-      const allPhotos = geotaggedMedia.filter(m => m.type === 'photo');
+      const allPhotos = (activeZoo?.media || geotaggedMedia).filter(m => m.type === 'photo');
       let closest = null;
       let minDistance = Infinity;
       allPhotos.forEach(photo => {
@@ -326,7 +327,12 @@ const MediaGallery = ({
 
   return (
     <>
-      <div className="media-panel media-gallery glass-panel open">
+      <div 
+        className="media-panel media-gallery glass-panel open"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         {/* Panel Header */}
         <div className="panel-header">
           <div className="panel-title-container">
@@ -524,14 +530,6 @@ const MediaGallery = ({
                     className={`full-media permanently-muted-video ${mediaLoading ? 'loading' : 'loaded'}`}
                     title="Permanently Muted Field Video with GPS Tracking"
                   />
-                  <button 
-                    onClick={togglePlay}
-                    className="video-play-btn"
-                    title={isPlaying ? "Pause Video" : "Play Video"}
-                    aria-label={isPlaying ? "Pause Video" : "Play Video"}
-                  >
-                    {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-                  </button>
                 </>
               ) : (
                 <div style={{ position: 'relative' }}>
@@ -543,15 +541,9 @@ const MediaGallery = ({
                       setMediaLoading(false);
                       setMediaError(false);
                     }}
-                    onError={(e) => {
-                      if (e.target.src.includes('20260714_80053AMByGPSMapCamera.avif')) {
-                        setMediaError(true);
-                        setMediaLoading(false);
-                      } else {
-                        e.target.src = '/media/photos/20260714_80053AMByGPSMapCamera.avif';
-                        setMediaError(false);
-                        setMediaLoading(false);
-                      }
+                    onError={() => {
+                      setMediaError(true);
+                      setMediaLoading(false);
                     }}
                   />
                   <button 
@@ -657,15 +649,7 @@ const MediaGallery = ({
                     style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--panel-border)', cursor: 'pointer' }}
                     onClick={() => setLightboxImage(nearestPhoto.imageUrl)}
                   >
-                    <img 
-                      src={nearestPhoto.imageUrl} 
-                      alt="Nearest photo" 
-                      style={{ width: '100%', display: 'block' }} 
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '/media/photos/20260714_80053AMByGPSMapCamera.avif';
-                      }}
-                    />
+                    <img src={nearestPhoto.imageUrl} alt="Nearest photo" style={{ width: '100%', display: 'block' }} />
                   </div>
                 </div>
               )}
@@ -710,15 +694,7 @@ const MediaGallery = ({
 
           {/* Center Image View */}
           <div className="lightbox-content" onClick={e => e.stopPropagation()}>
-            <img 
-              src={lightboxImage} 
-              alt="Full resolution view" 
-              className="lightbox-img" 
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '/media/photos/20260714_80053AMByGPSMapCamera.avif';
-              }}
-            />
+            <img src={lightboxImage} alt="Full resolution view" className="lightbox-img" />
           </div>
 
           {/* Right / Next Photo Button */}

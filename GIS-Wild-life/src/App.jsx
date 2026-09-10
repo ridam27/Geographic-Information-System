@@ -4,45 +4,205 @@ import MapView from './components/MapView';
 import MediaGallery from './components/MediaGallery';
 import './index.css';
 
-import { ZOO_CENTER, zooLocations } from './data/zooLocations';
-import { geotaggedMedia } from './data/geotaggedMedia';
+import { 
+  NAGPUR_REGION_CENTER, 
+  NAGPUR_REGION_ZOOM, 
+  INDIA_CENTER, 
+  INDIA_DEFAULT_ZOOM, 
+  ZOOS, 
+  detectActiveZoo 
+} from './data/zooRegistry';
 import { calculateDistance, calculateBearing } from './utils/distance';
-import { loadPersistedGISState, savePersistedGISState } from './utils/storageUtils';
+
+// Helper to read initial state from URL hash, query param, or localStorage
+const getInitialState = () => {
+  try {
+    const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+    const urlParams = new URLSearchParams(window.location.search);
+    const zooFromParam = urlParams.get('zoo');
+    
+    let savedState = null;
+    try {
+      const raw = localStorage.getItem('zooAppState');
+      if (raw) savedState = JSON.parse(raw);
+    } catch (err) {}
+
+    const zooCandidate = hash || zooFromParam || savedState?.activeZooId;
+    if (zooCandidate === 'gorewada' || zooCandidate === 'maharajbagh') {
+      const zoo = ZOOS[zooCandidate];
+      if (zoo) {
+        const savedLocation = savedState?.selectedLocationId 
+          ? zoo.locations.find(l => l.id === savedState.selectedLocationId)
+          : null;
+
+        const savedMedia = savedState?.selectedMediaId
+          ? zoo.media.find(m => m.id === savedState.selectedMediaId)
+          : null;
+
+        let userPin = savedState?.userPin || null;
+        if (!userPin && savedLocation) {
+          userPin = { lat: savedLocation.latitude, lng: savedLocation.longitude };
+        } else if (!userPin && savedMedia) {
+          userPin = { lat: savedMedia.latitude, lng: savedMedia.longitude };
+        }
+
+        return {
+          zooId: zooCandidate,
+          center: savedState?.mapCenter || (savedMedia ? [savedMedia.latitude, savedMedia.longitude] : (savedLocation ? [savedLocation.latitude, savedLocation.longitude] : zoo.center)),
+          zoom: savedState?.mapZoom || 16,
+          mapType: savedState?.mapType || 'hybrid',
+          selectedLocation: savedLocation,
+          userPin,
+          selectedMedia: savedMedia,
+          searchRadius: savedState?.searchRadius || 100
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading initial state:', e);
+  }
+  return {
+    zooId: null,
+    center: NAGPUR_REGION_CENTER,
+    zoom: NAGPUR_REGION_ZOOM,
+    mapType: 'hybrid',
+    selectedLocation: null,
+    userPin: null,
+    selectedMedia: null,
+    searchRadius: 100
+  };
+};
 
 function App() {
-  // 1. Load any previously saved GIS state from localStorage on startup
-  const savedState = useRef(loadPersistedGISState()).current;
+  const initial = useMemo(() => getInitialState(), []);
+
+  // 1. Primary Zoo State: null = Combined Starting Map, 'gorewada' = Gorewada GIS, 'maharajbagh' = Maharajbagh GIS
+  const [activeZooId, setActiveZooId] = useState(initial.zooId);
+
+  // Map view persistent coordinates (retains exact position on page refresh)
+  const [mapCenter, setMapCenter] = useState(initial.center);
+  const [mapZoom, setMapZoom] = useState(initial.zoom);
+
+  const [mapType, setMapType] = useState(initial.mapType || 'hybrid');
+  const [showTraffic, setShowTraffic] = useState(false);
+  const [showStreetLabels, setShowStreetLabels] = useState(true);
+  const [showZooLabels, setShowZooLabels] = useState(true);
+  const [showMediaMarkers, setShowMediaMarkers] = useState(true);
+
+  const activeZoo = activeZooId ? ZOOS[activeZooId] : null;
+  const activeLocations = activeZoo ? activeZoo.locations : [];
+  const activeMedia = activeZoo ? activeZoo.media : [];
 
   const [isPinningMode, setPinningMode] = useState(false);
-  const [userPin, setUserPin] = useState(savedState?.userPin || null);
-  const [selectedLocation, setSelectedLocation] = useState(() => {
-    if (!savedState?.selectedLocationId) return null;
-    return zooLocations.find(l => l.id === savedState.selectedLocationId) || null;
-  });
-  const [searchRadius, setSearchRadius] = useState(savedState?.searchRadius || 100);
+  const [userPin, setUserPin] = useState(initial.userPin);
+  const [selectedLocation, setSelectedLocation] = useState(initial.selectedLocation);
+  const [searchRadius, setSearchRadius] = useState(initial.searchRadius);
   
   const [matchingMedia, setMatchingMedia] = useState([]);
-  const [selectedMedia, setSelectedMedia] = useState(() => {
-    if (!savedState?.selectedMediaId) return null;
-    return geotaggedMedia.find(m => m.id === savedState.selectedMediaId) || null;
-  });
+  const [selectedMedia, setSelectedMedia] = useState(initial.selectedMedia);
 
-  // Map view and layer persistent states
-  const [mapCenter, setMapCenter] = useState(savedState?.mapCenter || ZOO_CENTER);
-  const [mapZoom, setMapZoom] = useState(savedState?.mapZoom !== undefined ? savedState.mapZoom : 15);
-  const [mapType, setMapType] = useState(savedState?.mapType || 'hybrid');
-  const [showTraffic, setShowTraffic] = useState(savedState?.showTraffic || false);
-  const [showStreetLabels, setShowStreetLabels] = useState(savedState?.showStreetLabels !== undefined ? savedState.showStreetLabels : true);
-  const [showZooLabels, setShowZooLabels] = useState(savedState?.showZooLabels !== undefined ? savedState.showZooLabels : true);
-  const [showMediaMarkers, setShowMediaMarkers] = useState(savedState?.showMediaMarkers !== undefined ? savedState.showMediaMarkers : true);
+  // Sync complete application & sidebar media state to localStorage across refreshes
+  useEffect(() => {
+    try {
+      if (activeZooId) {
+        const appState = {
+          activeZooId,
+          mapCenter,
+          mapZoom,
+          mapType,
+          selectedLocationId: selectedLocation?.id || null,
+          userPin: userPin ? { lat: userPin.lat, lng: userPin.lng } : null,
+          selectedMediaId: selectedMedia?.id || null,
+          searchRadius
+        };
+        localStorage.setItem('zooAppState', JSON.stringify(appState));
+        localStorage.setItem('activeZooId', activeZooId);
+        window.history.replaceState(null, '', '#' + activeZooId);
+      } else {
+        localStorage.removeItem('zooAppState');
+        localStorage.removeItem('activeZooId');
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    } catch (e) {
+      console.warn('Error syncing state:', e);
+    }
+  }, [activeZooId, mapCenter, mapZoom, mapType, selectedLocation, userPin, selectedMedia, searchRadius]);
 
-  // Live dynamic GPS tracking state for video playback & route seeking
+  // Handle browser back/forward buttons (hash navigation)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash === 'gorewada' || hash === 'maharajbagh') {
+        const zoo = ZOOS[hash];
+        if (zoo) {
+          setActiveZooId(hash);
+          setMapCenter(zoo.center);
+          setMapZoom(16);
+        }
+      } else if (!hash) {
+        setActiveZooId(null);
+        setMapCenter(NAGPUR_REGION_CENTER);
+        setMapZoom(NAGPUR_REGION_ZOOM);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Live dynamic GPS tracking state for video playback
   const [liveVideoTracking, setLiveVideoTracking] = useState(null);
   const [seekVideoRequest, setSeekVideoRequest] = useState(null);
 
   const handleSeekToRoutePoint = useCallback((progressRatio, closestPoint) => {
     setSeekVideoRequest({ progressRatio, closestPoint, timestamp: Date.now() });
   }, []);
+
+  // 2. Explicit Zoo-Specific Navigation Handlers
+  const handleEnterZoo = useCallback((zooId) => {
+    const targetZoo = ZOOS[zooId];
+    if (!targetZoo) return;
+
+    setActiveZooId(zooId);
+    setUserPin(null);
+    setSelectedLocation(null);
+    setSelectedMedia(null);
+    setLiveVideoTracking(null);
+    setMapCenter(targetZoo.center);
+    setMapZoom(16);
+  }, []);
+
+  const handleBackToCombinedMap = useCallback(() => {
+    setActiveZooId(null);
+    setUserPin(null);
+    setSelectedLocation(null);
+    setSelectedMedia(null);
+    setLiveVideoTracking(null);
+    setMapCenter(NAGPUR_REGION_CENTER);
+    setMapZoom(NAGPUR_REGION_ZOOM);
+  }, []);
+
+  // 3. Sync map zoom / pan state: Return to combined map when user zooms out below threshold
+  const handleMapChange = useCallback((newCenter, newZoom) => {
+    setMapCenter(newCenter);
+    setMapZoom(newZoom);
+
+    // Zoom-out threshold: smoothly return to overview map when zoomed out
+    if (newZoom < 11.5) {
+      if (activeZooId !== null) {
+        setActiveZooId(null);
+        setUserPin(null);
+        setSelectedLocation(null);
+        setSelectedMedia(null);
+        setLiveVideoTracking(null);
+      }
+    } else if (newZoom >= 14 && activeZooId === null) {
+      const detected = detectActiveZoo(newCenter[0], newCenter[1], newZoom);
+      if (detected) {
+        setActiveZooId(detected);
+      }
+    }
+  }, [activeZooId]);
 
   // When selectedLocation changes, update userPin and default radius
   const handleSelectLocation = useCallback((location) => {
@@ -54,15 +214,14 @@ function App() {
     }
   }, []);
 
-  // When pin or radius changes, find matching geotagged media
+  // When pin or radius changes, find matching geotagged media strictly for the active zoo dataset
   useEffect(() => {
-    if (!userPin) {
+    if (!userPin || !activeMedia || activeMedia.length === 0) {
       setMatchingMedia([]);
-      setSelectedMedia(null);
       return;
     }
 
-    const matches = geotaggedMedia.map(media => {
+    const matches = activeMedia.map(media => {
       const distance = calculateDistance(userPin.lat, userPin.lng, media.latitude, media.longitude);
       const bearing = calculateBearing(userPin.lat, userPin.lng, media.latitude, media.longitude);
       return { ...media, distance, bearing };
@@ -72,43 +231,13 @@ function App() {
 
     setMatchingMedia(matches);
     
-    // If the currently selected media is in matches, update its distance/bearing properties
     if (selectedMedia) {
       const stillMatches = matches.find(m => m.id === selectedMedia.id);
       if (stillMatches) {
         setSelectedMedia(stillMatches);
       }
     }
-  }, [userPin, searchRadius]);
-
-  // 2. Automatically save GIS state to localStorage with debounce
-  useEffect(() => {
-    savePersistedGISState({
-      mapCenter,
-      mapZoom,
-      mapType,
-      showTraffic,
-      showStreetLabels,
-      showZooLabels,
-      showMediaMarkers,
-      userPin,
-      selectedLocationId: selectedLocation?.id || null,
-      selectedMediaId: selectedMedia?.id || null,
-      searchRadius
-    });
-  }, [
-    mapCenter,
-    mapZoom,
-    mapType,
-    showTraffic,
-    showStreetLabels,
-    showZooLabels,
-    showMediaMarkers,
-    userPin,
-    selectedLocation,
-    selectedMedia,
-    searchRadius
-  ]);
+  }, [userPin, searchRadius, activeMedia]);
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
@@ -136,7 +265,11 @@ function App() {
 
   return (
     <div className="dashboard-container">
-      <Header />
+      <Header 
+        activeZooId={activeZooId} 
+        currentZoom={mapZoom}
+        onBackToCombinedMap={handleBackToCombinedMap} 
+      />
       
       <MapView 
         isPinningMode={isPinningMode}
@@ -165,21 +298,31 @@ function App() {
         setShowMediaMarkers={setShowMediaMarkers}
         liveVideoTracking={liveVideoTracking}
         onSeekToRoutePoint={handleSeekToRoutePoint}
+        activeZooId={activeZooId}
+        activeZoo={activeZoo}
+        activeLocations={activeLocations}
+        activeMedia={activeMedia}
+        onEnterZoo={handleEnterZoo}
+        onBackToCombinedMap={handleBackToCombinedMap}
+        onMapStateChange={handleMapChange}
       />
       
-      <MediaGallery 
-        userPin={userPin}
-        selectedLocation={selectedLocation}
-        matchingMedia={matchingMedia}
-        searchRadius={searchRadius}
-        setSearchRadius={setSearchRadius}
-        selectedMedia={selectedMedia}
-        setSelectedMedia={setSelectedMedia}
-        onGetDirections={handleGetDirections}
-        onClose={handleCloseGallery}
-        onLiveVideoProgress={setLiveVideoTracking}
-        seekVideoRequest={seekVideoRequest}
-      />
+      {activeZooId !== null && (
+        <MediaGallery 
+          userPin={userPin}
+          selectedLocation={selectedLocation}
+          matchingMedia={matchingMedia}
+          searchRadius={searchRadius}
+          setSearchRadius={setSearchRadius}
+          selectedMedia={selectedMedia}
+          setSelectedMedia={setSelectedMedia}
+          onGetDirections={handleGetDirections}
+          onClose={handleCloseGallery}
+          onLiveVideoProgress={setLiveVideoTracking}
+          seekVideoRequest={seekVideoRequest}
+          activeZoo={activeZoo}
+        />
+      )}
     </div>
   );
 }

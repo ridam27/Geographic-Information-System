@@ -461,12 +461,12 @@ mqttClient.on("connect", () => {
 // MQTT RECONNECT
 // ================================================================
 
-mqttClient.on("reconnect", () => {
+// mqttClient.on("reconnect", () => {
 
-    console.log(
-        `[${timestamp()}] MQTT reconnecting...`
-    );
-});
+//     console.log(
+//         `[${timestamp()}] MQTT reconnecting...`
+//     );
+// });
 
 // ================================================================
 // MQTT OFFLINE
@@ -483,12 +483,12 @@ mqttClient.on("offline", () => {
 // MQTT ERROR
 // ================================================================
 
-mqttClient.on("error", err => {
+// mqttClient.on("error", err => {
 
-    console.error(
-        `[${timestamp()}] MQTT ERROR: ${err.message}`
-    );
-});
+//     console.error(
+//         `[${timestamp()}] MQTT ERROR: ${err.message}`
+//     );
+// });
 
 // ================================================================
 // MQTT MESSAGE RECEIVER

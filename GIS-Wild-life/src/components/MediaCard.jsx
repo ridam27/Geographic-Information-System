@@ -51,10 +51,6 @@ const MediaCard = ({ media, onClick }) => {
               alt={media.title} 
               className="thumbnail-media" 
               loading="lazy" 
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '/media/photos/20260714_80053AMByGPSMapCamera.avif';
-              }}
             />
           )
         ) : (

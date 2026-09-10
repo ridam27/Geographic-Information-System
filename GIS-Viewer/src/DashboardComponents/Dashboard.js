@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import {
   Box,
   Drawer,
@@ -58,6 +58,19 @@ const Dashboard = () => {
 
   // Restore page scroll position after a refresh
   useScrollRestoration("dashboard-main");
+
+  // Coming in via the Main application's SSO handoff (?tab=Location) lands
+  // straight on that tab instead of the Welcome screen — no extra click.
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    const validTabs = ["Location", "Shape File Extractor", "KML", "KMZ", "TIF", "Video Tracker"];
+    if (tab && validTabs.includes(tab)) {
+      setSelectedOption(tab);
+      // Clean the URL so a later refresh doesn't keep forcing this tab.
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleSidebar = () => {
     setSidebarOpen(!isSidebarOpen);
