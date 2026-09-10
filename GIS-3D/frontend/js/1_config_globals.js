@@ -1,6 +1,13 @@
 /* eslint-disable no-undef */
 // File: js/1_config_globals.js
-// Logic bilkul change nahi kiya hai.
+
+// Register last opened port/module in localStorage
+try {
+  localStorage.setItem("gis_active_module", "3d");
+  localStorage.setItem("gis_last_port_module", "3d");
+  localStorage.setItem("gis_last_port", "3001");
+  localStorage.setItem("gis_last_port_url", window.location.origin);
+} catch (e) {}
 
 // Configure Cesium to handle CORS issues with KMZ files
 Cesium.Ion.defaultAccessToken =
