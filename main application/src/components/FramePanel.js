@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { IconExternal } from "./Icons";
 
-// Render.com free-tier apps spin down after inactivity, so a cold start can take
-// a while to respond. We give it generous time before assuming the embed is
-// actually blocked (e.g. by X-Frame-Options / frame-ancestors) rather than just slow.
-const BLOCK_TIMEOUT_MS = 9000;
+// Render.com free-tier apps spin down after inactivity, so a cold start can
+// take 30s+ to respond. We give it generous time before assuming the embed is
+// actually blocked (e.g. by X-Frame-Options / frame-ancestors) rather than
+// just slow waking up.
+const BLOCK_TIMEOUT_MS = 20000;
 
-export default function FramePanel({ module, src, ssoError }) {
+export default function FramePanel({ module, src, ssoError, onRetry }) {
   const [status, setStatus] = useState("loading"); // loading | loaded | blocked
   const [reloadKey, setReloadKey] = useState(0);
   const timerRef = useRef(null);
@@ -28,7 +29,20 @@ export default function FramePanel({ module, src, ssoError }) {
     setStatus("loaded");
   };
 
-  const handleRetry = () => setReloadKey((k) => k + 1);
+  // For SSO-backed modules, the src we have is a one-time authorization
+  // code — it's already been consumed by the load that just failed/timed
+  // out, so simply remounting the same iframe with the same src always
+  // fails with "Sign-in link expired or already used." Ask the parent for a
+  // fresh code first; effectiveSrc changing once it arrives is what
+  // actually remounts the iframe. Non-SSO modules have no code to burn, so
+  // just force a reload directly.
+  const handleRetry = () => {
+    if (module.appId && onRetry) {
+      onRetry();
+    } else {
+      setReloadKey((k) => k + 1);
+    }
+  };
 
   return (
     <div className="framepanel">

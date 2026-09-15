@@ -33,6 +33,10 @@ function toggleLayer(layerType) {
   }
 }else if (layerType === "paths") {
     if (pathsDataSource) pathsDataSource.show = isChecked;
+  } else if (layerType === "photos") {
+    if (typeof window.togglePhotos === "function") window.togglePhotos(isChecked);
+  } else if (layerType === "videos") {
+    if (typeof window.toggleVideos === "function") window.toggleVideos(isChecked);
   }
 }
 
@@ -86,9 +90,24 @@ function generateMunicipalPropertyRecord(rawId) {
     "Residential", "Commercial", "Mixed (Residential + Shop)", "Office Space"
   ];
 
-  const firstName = firstNames[(num * 3) % firstNames.length];
-  const middle = middleInitials[(num * 5) % middleInitials.length];
-  const lastName = lastNames[(num * 7) % lastNames.length];
+  // Owner name is derived from independently-salted hashes of the FULL id
+  // (prefix included), not just the extracted digits. Using only `num`
+  // meant "MN08" and a Manewada house that also resolves to num 8 (e.g.
+  // "H8") generated the exact same owner name — two different houses,
+  // identical person. Salting each name part separately avoids the
+  // correlation you'd get from deriving all three off one shared hash.
+  function hashIdWithSalt(str, salt) {
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash * 33) ^ (str.charCodeAt(i) + salt)) >>> 0;
+    }
+    return hash;
+  }
+  const seedSource = standardId || cleanId || String(num);
+
+  const firstName = firstNames[hashIdWithSalt(seedSource, 17) % firstNames.length];
+  const middle = middleInitials[hashIdWithSalt(seedSource, 53) % middleInitials.length];
+  const lastName = lastNames[hashIdWithSalt(seedSource, 131) % lastNames.length];
   const ownerName = `${firstName} ${middle} ${lastName}`;
   const propertyName = propertyNames[num % propertyNames.length];
   const nature = propertyTypes[num % propertyTypes.length];
@@ -496,17 +515,23 @@ function loadKMZLayers() {
         } catch (e) {}
       });
 
-      // Load static houses KMZ if present (contains all base house polygons for the 3D model)
-      const staticHousesDS =
-        (await loadKmzFileToKmlDataSource("HOUSES polygon.kmz")) ||
-        (await loadKmzFileToKmlDataSource("houses.kmz"));
+      // Load every static houses KMZ that exists (each covers a different
+      // surveyed cluster, not duplicates) and merge them — same multi-file
+      // pattern as loadStaticRoadKMZ() in roadSurvey3D.js for roads.
+      const houseKmzFiles = [
+        "HOUSES polygon.kmz",
+        "houses.kmz",
+        encodeURI("Manish Nagar Houses.kmz"),
+      ];
 
-      if (staticHousesDS) {
+      for (const file of houseKmzFiles) {
+        const staticHousesDS = await loadKmzFileToKmlDataSource(file);
+        if (!staticHousesDS) continue;
         staticHousesDS.entities.values.forEach((ent) =>
           combinedHousesDS.entities.add(ent)
         );
         console.log(
-          `✓ Loaded ${staticHousesDS.entities.values.length} houses from HOUSES polygon.kmz`
+          `✓ Loaded ${staticHousesDS.entities.values.length} houses from ${file}`
         );
       }
 
@@ -519,7 +544,11 @@ function loadKMZLayers() {
         Cesium.Color.fromCssColorString("#10B981").withAlpha(0.65), // Emerald Green
         Cesium.Color.fromCssColorString("#DB2777").withAlpha(0.65), // Vibrant Magenta / Pink
       ];
-      const BUILDING_HEIGHTS = [8.5, 11.0, 9.0, 12.5, 10.0, 13.0, 11.5, 14.0];
+      // Raised from the original [8.5..14.0] range — the colored extrusion
+      // boxes were topping out below the real photogrammetry model's roofs,
+      // so the actual building poked out above the overlay. Bumped up so
+      // the box fully envelopes the model regardless of its real height.
+      const BUILDING_HEIGHTS = [17.0, 22.0, 18.0, 25.0, 20.0, 26.0, 23.0, 28.0];
 
       // --- popup customization (uses ptaxDatabase where available) ---
       const fieldMap = [
@@ -586,11 +615,14 @@ function loadKMZLayers() {
           try {
             if (entity.polygon) {
               const color = HOUSE_COLORS[i % HOUSE_COLORS.length];
+              // Same reasoning as BUILDING_HEIGHTS above: minimum and
+              // per-floor height both raised so floor-based buildings also
+              // clear the real model instead of being buried inside it.
               const bHeight =
                 houseInfo && houseInfo["Number of Floors"]
                   ? Math.max(
-                      8.5,
-                      parseInt(houseInfo["Number of Floors"], 10) * 3.5
+                      17.0,
+                      parseInt(houseInfo["Number of Floors"], 10) * 6.0
                     )
                   : BUILDING_HEIGHTS[i % BUILDING_HEIGHTS.length];
 

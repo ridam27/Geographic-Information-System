@@ -18,13 +18,14 @@ function setSearchPlaceholder(mode) {
   }
 
   const placeholders = {
-    all: "Search property, pole, manhole, pipeline or ATM",
+    all: "Search property, pole, manhole, pipeline, ATM, place or lat,long",
     property: "Search property, owner or phone",
     pole: "Search pole number",
     manhole: "Search manhole ID",
     pipeline: "Search pipeline ID",
     flyover: "Search flyover ID",
     atm: "Search ATM ID or bank name",
+    location: "Search place name or enter lat,long (e.g. 28.6139, 77.2090)",
   };
 
   searchInput.placeholder = placeholders[mode] || placeholders.all;
@@ -598,6 +599,222 @@ function getPinUrlForProperty(propertyData) {
 }
 
 // ======================================================
+// === LOCATION SEARCH: place name (geocoding) or lat,long ===
+// ======================================================
+
+const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
+let locationSearchAbortController = null;
+
+/**
+ * Query me se ek lat/long pair nikaalne ki koshish karta hai.
+ * Supports: "28.6139, 77.2090" | "28.6139 77.2090" | "lat 28.6139 long 77.2090"
+ * Do numbers na milein, ya woh valid lat/long range me na hon, to null return hota hai.
+ */
+function parseCoordinateQuery(query) {
+  const raw = String(query || "").trim();
+  if (!raw) return null;
+
+  const numberMatches = raw.match(/-?\d{1,3}(?:\.\d+)?/g);
+  if (!numberMatches || numberMatches.length !== 2) return null;
+
+  // Avoid misreading plain ids (e.g. "P-301", "MH-101") as coordinates —
+  // require a comma/semicolon separator or an explicit lat/lon/lng keyword.
+  if (!/[,;]/.test(raw) && !/\b(lat|latitude|lon|lng|longitude)\b/i.test(raw)) {
+    return null;
+  }
+
+  const lat = parseFloat(numberMatches[0]);
+  const lon = parseFloat(numberMatches[1]);
+
+  if (
+    Number.isNaN(lat) ||
+    Number.isNaN(lon) ||
+    lat < -90 ||
+    lat > 90 ||
+    lon < -180 ||
+    lon > 180
+  ) {
+    return null;
+  }
+
+  return { lat, lon };
+}
+
+/**
+ * Diye gaye lat/long par pin lagata hai aur camera fly karta hai.
+ */
+function flyToCoordinates(lat, lon, label) {
+  if (typeof viewer === "undefined" || !viewer) return false;
+
+  if (typeof window.closePoleDetailsPanel === "function") window.closePoleDetailsPanel();
+  if (typeof window.closeManholeDetailsPanel === "function") window.closeManholeDetailsPanel();
+  if (typeof window.closePipelineDetailsPanel === "function") window.closePipelineDetailsPanel();
+  if (typeof window.closeFlyoverDetailsPanel === "function") window.closeFlyoverDetailsPanel();
+  if (typeof window.closeBannerSection === "function") window.closeBannerSection();
+
+  if (searchPinEntity) {
+    try {
+      viewer.entities.remove(searchPinEntity);
+    } catch (e) {}
+    searchPinEntity = null;
+  }
+
+  const pinUrl = pinBuilder.fromColor(Cesium.Color.CRIMSON, 48).toDataURL();
+  const displayLabel = label || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+
+  searchPinEntity = viewer.entities.add({
+    name: displayLabel,
+    position: Cesium.Cartesian3.fromDegrees(lon, lat, 20),
+    billboard: {
+      image: pinUrl,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+    },
+  });
+
+  viewer.flyTo(searchPinEntity, {
+    duration: 1.5,
+    offset: new Cesium.HeadingPitchRange(
+      Cesium.Math.toRadians(0),
+      Cesium.Math.toRadians(-45),
+      300
+    ),
+  });
+
+  viewer.selectedEntity = searchPinEntity;
+  return true;
+}
+window.flyToCoordinates = flyToCoordinates;
+
+function renderCoordinateSuggestion(resultsContainer, coords) {
+  const item = document.createElement("div");
+  item.className = "search-result-item";
+  item.innerHTML = `
+<div class="sr-row">
+  <div class="sr-icon">📍</div>
+  <div class="sr-body">
+    <div class="sr-title-row">
+      <span class="sr-title">Fly to ${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)}</span>
+      <span class="search-result-badge location">COORDS</span>
+    </div>
+    <div class="sr-subtitle">Latitude / Longitude</div>
+  </div>
+</div>
+`;
+
+  item.onclick = () => {
+    flyToCoordinates(coords.lat, coords.lon);
+    const searchInput = document.getElementById("searchInput");
+    const results = document.getElementById("search-results");
+    if (searchInput) searchInput.value = `${coords.lat}, ${coords.lon}`;
+    if (results) results.innerHTML = "";
+  };
+
+  resultsContainer.appendChild(item);
+}
+
+/**
+ * OpenStreetMap Nominatim se place name search (free, no API key).
+ * Ek hi time me sirf latest request active rehti hai (purani abort ho jaati hai).
+ */
+async function geocodePlace(query) {
+  const q = String(query || "").trim();
+  if (q.length < 3) return [];
+
+  if (locationSearchAbortController) {
+    locationSearchAbortController.abort();
+  }
+  locationSearchAbortController =
+    typeof AbortController !== "undefined" ? new AbortController() : null;
+
+  try {
+    const url = `${NOMINATIM_SEARCH_URL}?format=jsonv2&addressdetails=0&limit=5&q=${encodeURIComponent(q)}`;
+    const response = await fetch(url, {
+      signal: locationSearchAbortController
+        ? locationSearchAbortController.signal
+        : undefined,
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (!Array.isArray(data)) return [];
+
+    return data
+      .map((item) => ({
+        displayName: item.display_name,
+        lat: parseFloat(item.lat),
+        lon: parseFloat(item.lon),
+      }))
+      .filter((p) => !Number.isNaN(p.lat) && !Number.isNaN(p.lon));
+  } catch (e) {
+    if (e.name !== "AbortError") {
+      console.warn("Location search failed:", e);
+    }
+    return [];
+  }
+}
+
+function renderLocationResults(resultsContainer, places) {
+  places.forEach((place) => {
+    const item = document.createElement("div");
+    item.className = "search-result-item";
+    item.innerHTML = `
+<div class="sr-row">
+  <div class="sr-icon">📍</div>
+  <div class="sr-body">
+    <div class="sr-title-row">
+      <span class="sr-title">${place.displayName}</span>
+      <span class="search-result-badge location">PLACE</span>
+    </div>
+  </div>
+</div>
+`;
+
+    item.onclick = () => {
+      flyToCoordinates(place.lat, place.lon, place.displayName);
+      const searchInput = document.getElementById("searchInput");
+      const results = document.getElementById("search-results");
+      if (searchInput) searchInput.value = place.displayName;
+      if (results) results.innerHTML = "";
+    };
+
+    resultsContainer.appendChild(item);
+  });
+}
+
+/**
+ * Location mode ke liye: pehle coordinate parse try karta hai, fir place-name geocode.
+ * autoFly=true par pehle match par seedha fly kar deta hai (Enter press).
+ */
+async function runLocationSearch(rawQuery, resultsContainer, autoFly) {
+  const coords = parseCoordinateQuery(rawQuery);
+  if (coords) {
+    renderCoordinateSuggestion(resultsContainer, coords);
+    if (autoFly) {
+      flyToCoordinates(coords.lat, coords.lon);
+      if (resultsContainer) resultsContainer.innerHTML = "";
+    }
+    return true;
+  }
+
+  const places = await geocodePlace(rawQuery);
+  if (places.length === 0) {
+    resultsContainer.innerHTML +=
+      '<div class="search-no-results">No matching place found.</div>';
+    return false;
+  }
+
+  renderLocationResults(resultsContainer, places);
+  if (autoFly) {
+    flyToCoordinates(places[0].lat, places[0].lon, places[0].displayName);
+    if (resultsContainer) resultsContainer.innerHTML = "";
+  }
+  return true;
+}
+
+// ======================================================
 // === SEARCH: ptaxDatabase ke andar text search logic ===
 // ======================================================
 
@@ -645,6 +862,27 @@ async function searchProperties(autoFly = false) {
         : `Type to search ${searchMode}.`
     );
     return;
+  }
+
+  // Location mode: place name (geocoded) or lat,long — handled entirely here.
+  if (searchMode === "location") {
+    await runLocationSearch(query, resultsContainer, autoFly);
+    return;
+  }
+
+  // In "All" mode, a lat,long pair should win outright — otherwise it can get
+  // misrouted into pole/manhole id matching since those also start with digits.
+  if (searchMode === "all") {
+    const coordsQuery = parseCoordinateQuery(query);
+    if (coordsQuery) {
+      resultsContainer.innerHTML = "";
+      renderCoordinateSuggestion(resultsContainer, coordsQuery);
+      if (autoFly) {
+        flyToCoordinates(coordsQuery.lat, coordsQuery.lon);
+        resultsContainer.innerHTML = "";
+      }
+      return;
+    }
   }
 
   if (searchMode === "pipeline" || isPipelineQuery(query)) {
@@ -978,6 +1216,12 @@ function addPinAndFlyToEntity(entity, propertyData) {
  */
 function flyToHouse(houseId, propertyData) {
   console.log(`Search initiated for: ${houseId}`);
+
+  // The 3D model for this house's area may not be loaded yet (only the
+  // default preset model loads at startup now — see 4_model_manager.js).
+  if (typeof window.ensurePresetModelLoadedForHouseId === "function") {
+    window.ensurePresetModelLoadedForHouseId(houseId);
+  }
 
   if (typeof window.closePoleDetailsPanel === "function") window.closePoleDetailsPanel();
   if (typeof window.closeManholeDetailsPanel === "function") window.closeManholeDetailsPanel();

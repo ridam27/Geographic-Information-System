@@ -316,6 +316,7 @@ function addModelToCesium(modelUrl, fileName) {
   document.getElementById("modelStatus").className =
     "layer-status status-loaded";
   document.getElementById("modelToggle").checked = true;
+  updateModelAdjustTargetLabel();
 }
 
 function handleGenericModelFile(file) {
@@ -330,9 +331,37 @@ function handleGenericModelFile(file) {
   addModelToCesium(modelUrl, file.name);
 }
 
+// Real-time model adjustment now applies to whichever model is currently
+// "active": the manually-uploaded custom model if one exists, otherwise
+// the preset GLB (Manewada / Manish Nagar) selected in the navbar dropdown.
+function getActiveModelEntity() {
+  return modelEntity || presetModelEntities[currentModelId] || null;
+}
+
+// When "Apply to all uploaded models" is checked, live adjustments (and
+// Save/Reset) act on every preset model entity currently on the map
+// instead of just the one selected in the navbar dropdown.
+function isApplyToAllModelsChecked() {
+  const checkbox = document.getElementById("applyToAllModels");
+  return !!(checkbox && checkbox.checked);
+}
+
+function getTargetModelEntities() {
+  if (modelEntity) return [modelEntity];
+
+  if (isApplyToAllModelsChecked()) {
+    const entities = Object.values(presetModelEntities).filter(Boolean);
+    if (entities.length) return entities;
+  }
+
+  const active = presetModelEntities[currentModelId];
+  return active ? [active] : [];
+}
+
 function updateModelOrientation() {
-  if (modelEntity) {
-    const position = modelEntity.position.getValue(
+  const targetEntities = getTargetModelEntities();
+  targetEntities.forEach((targetEntity) => {
+    const position = targetEntity.position.getValue(
       Cesium.JulianDate.now()
     );
     const heading = Cesium.Math.toRadians(
@@ -350,12 +379,13 @@ function updateModelOrientation() {
       position,
       hpr
     );
-    modelEntity.orientation = orientation;
-  }
+    targetEntity.orientation = orientation;
+  });
 }
 
 function updateModelPosition() {
-  if (modelEntity) {
+  const targetEntities = getTargetModelEntities();
+  targetEntities.forEach((targetEntity) => {
     const longitude = parseFloat(
       document.getElementById("longitude").value
     );
@@ -369,17 +399,17 @@ function updateModelPosition() {
       latitude,
       height
     );
-    modelEntity.position = position;
+    targetEntity.position = position;
 
     if (height === 0) {
-      modelEntity.model.heightReference =
+      targetEntity.model.heightReference =
         Cesium.HeightReference.CLAMP_TO_GROUND;
-      modelEntity.heightReference =
+      targetEntity.heightReference =
         Cesium.HeightReference.CLAMP_TO_GROUND;
     } else {
-      modelEntity.model.heightReference =
+      targetEntity.model.heightReference =
         Cesium.HeightReference.RELATIVE_TO_GROUND;
-      modelEntity.heightReference = Cesium.HeightReference.NONE;
+      targetEntity.heightReference = Cesium.HeightReference.NONE;
     }
 
     const hpr = new Cesium.HeadingPitchRoll(
@@ -394,20 +424,150 @@ function updateModelPosition() {
       )
     );
 
-    modelEntity.orientation =
+    targetEntity.orientation =
       Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
-
-    const cameraOffset = new Cesium.HeadingPitchRange(
-      Cesium.Math.toRadians(0),
-      Cesium.Math.toRadians(-15),
-      1000
-    );
-
-    viewer.zoomTo(modelEntity, cameraOffset);
 
     console.log(
       `Model repositioned to: ${latitude}, ${longitude}, height: ${height}`
     );
+  });
+}
+
+// Reads the Scale slider and applies it live to whichever model(s) are active.
+function updateActiveModelScale() {
+  const targetEntities = getTargetModelEntities();
+  targetEntities.forEach((targetEntity) => {
+    if (targetEntity.model) {
+      targetEntity.model.scale = parseFloat(
+        document.getElementById("scale").value || 1.0
+      );
+    }
+  });
+}
+
+// Updates the "Adjusting: <model>" caption in the sidebar panel so it's
+// always clear which model the live controls are currently editing.
+function updateModelAdjustTargetLabel() {
+  const label = document.getElementById("modelAdjustTarget");
+  if (!label) return;
+
+  if (modelEntity) {
+    label.textContent = "Adjusting: Uploaded Model";
+  } else {
+    const config = getModelConfig(currentModelId);
+    label.textContent = `Adjusting: ${config ? config.label : currentModelId}`;
+  }
+}
+
+// "Reset to Default" button in the Model Adjustment panel — clears any
+// saved location for the active preset model and restores its transform
+// from the hardcoded MODELS config. Has no default to reset to for a
+// manually-uploaded model, so it's a no-op in that case.
+function resetActiveModelTransform() {
+  if (modelEntity) {
+    console.log("No default transform to reset to for an uploaded model.");
+    return;
+  }
+
+  const applyToAll = isApplyToAllModelsChecked();
+  const targetIds = applyToAll ? MODELS.map((m) => m.id) : [currentModelId];
+
+  const overrides = loadModelTransformOverrides();
+  targetIds.forEach((id) => {
+    if (overrides[id]) delete overrides[id];
+
+    const config = getModelConfig(id);
+    const entity = presetModelEntities[id];
+    if (!config || !entity) return;
+
+    const position = Cesium.Cartesian3.fromDegrees(
+      config.longitude,
+      config.latitude,
+      config.height
+    );
+    entity.position = position;
+    entity.model.heightReference =
+      config.height === 0
+        ? Cesium.HeightReference.CLAMP_TO_GROUND
+        : Cesium.HeightReference.RELATIVE_TO_GROUND;
+    entity.heightReference =
+      config.height === 0
+        ? Cesium.HeightReference.CLAMP_TO_GROUND
+        : Cesium.HeightReference.NONE;
+
+    const hpr = new Cesium.HeadingPitchRoll(
+      Cesium.Math.toRadians(config.heading),
+      Cesium.Math.toRadians(config.pitch),
+      Cesium.Math.toRadians(config.roll)
+    );
+    entity.orientation = Cesium.Transforms.headingPitchRollQuaternion(
+      position,
+      hpr
+    );
+    if (entity.model) entity.model.scale = parseFloat(config.scale);
+  });
+  saveModelTransformOverrides(overrides);
+
+  const activeConfig = getModelConfig(currentModelId);
+  if (activeConfig) {
+    document.getElementById("longitude").value = activeConfig.longitude;
+    document.getElementById("latitude").value = activeConfig.latitude;
+    document.getElementById("height").value = activeConfig.height;
+    document.getElementById("scale").value = activeConfig.scale;
+    document.getElementById("heading").value = activeConfig.heading;
+    document.getElementById("pitch").value = activeConfig.pitch;
+    document.getElementById("roll").value = activeConfig.roll;
+
+    const scaleLabel = document.getElementById("scaleValueLabel");
+    if (scaleLabel) scaleLabel.textContent = `${parseFloat(activeConfig.scale).toFixed(1)}x`;
+  }
+
+  updateModelAdjustTargetLabel();
+}
+
+// "Save Location" button in the Model Adjustment panel — persists the
+// active preset model's current position/height/scale/rotation to
+// localStorage so it loads there again next time the app opens.
+function saveActiveModelTransform() {
+  const label = document.getElementById("modelAdjustTarget");
+
+  if (modelEntity) {
+    if (label) {
+      label.textContent = "Saving isn't supported for an uploaded model.";
+      setTimeout(() => updateModelAdjustTargetLabel(), 2200);
+    }
+    return;
+  }
+
+  const config = getModelConfig(currentModelId);
+  if (!config) return;
+
+  const applyToAll = isApplyToAllModelsChecked();
+  const targetIds = applyToAll ? MODELS.map((m) => m.id) : [currentModelId];
+
+  const transform = {
+    longitude: parseFloat(document.getElementById("longitude").value),
+    latitude: parseFloat(document.getElementById("latitude").value),
+    height: parseFloat(document.getElementById("height").value),
+    scale: parseFloat(document.getElementById("scale").value),
+    heading: parseFloat(document.getElementById("heading").value),
+    pitch: parseFloat(document.getElementById("pitch").value),
+    roll: parseFloat(document.getElementById("roll").value),
+  };
+
+  const overrides = loadModelTransformOverrides();
+  targetIds.forEach((id) => {
+    overrides[id] = { ...transform };
+  });
+  saveModelTransformOverrides(overrides);
+
+  console.log(`Saved custom location for ${applyToAll ? "all models" : config.label}:`, transform);
+
+  if (label) {
+    label.textContent = applyToAll
+      ? "Saved! All models will load at this location next time."
+      : `Saved! ${config.label} will load here next time.`;
+    setTimeout(() => updateModelAdjustTargetLabel(), 2200);
   }
 }
 
@@ -421,7 +581,7 @@ function centerOnModel() {
   const targetEntity =
     modelEntity ||
     presetModelEntities[currentModelId || DEFAULT_MODEL_ID] ||
-    presetModelEntities["manewada"];
+    presetModelEntities[DEFAULT_MODEL_ID];
 
   if (targetEntity) {
     const cameraOffset = new Cesium.HeadingPitchRange(
@@ -476,8 +636,8 @@ const MODELS = [
     id: "manishnagar",
     label: "Manish Nagar",
     url: "./manish nagar.glb",
-    longitude: 79.097290,
-    latitude: 21.102300,
+    longitude: 79.097664,
+    latitude: 21.101988,
     height: 0,
     scale: 1.0,
     heading: 105,
@@ -486,8 +646,8 @@ const MODELS = [
   },
 ];
 
-const DEFAULT_MODEL_ID = "manewada";
-let currentModelId = "manewada";
+const DEFAULT_MODEL_ID = "manishnagar";
+let currentModelId = "manishnagar";
 
 // Holds every preset model entity currently on the map, keyed by id.
 // Both models live in here at once — nothing gets removed when a
@@ -496,6 +656,46 @@ const presetModelEntities = {};
 
 function getModelConfig(id) {
   return MODELS.find((m) => m.id === id) || MODELS[0];
+}
+
+// ---------------------------------------------------------------
+// SAVED MODEL LOCATION (per preset model, persisted in localStorage)
+// ---------------------------------------------------------------
+// Lets a user drag a preset model (Manewada / Manish Nagar) into place
+// with the live Model Adjustment panel and "Save Location" it — so the
+// NEXT time the app loads, that model appears at the saved spot/scale/
+// rotation instead of the hardcoded MODELS default.
+const MODEL_TRANSFORM_STORAGE_KEY = "gis3d_model_transform_overrides";
+
+function loadModelTransformOverrides() {
+  try {
+    const raw = localStorage.getItem(MODEL_TRANSFORM_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.warn("Failed to read saved model locations:", e);
+    return {};
+  }
+}
+
+function saveModelTransformOverrides(overrides) {
+  try {
+    localStorage.setItem(
+      MODEL_TRANSFORM_STORAGE_KEY,
+      JSON.stringify(overrides)
+    );
+  } catch (e) {
+    console.warn("Failed to persist saved model location:", e);
+  }
+}
+
+// Returns the MODELS config for `id` with any saved override layered on
+// top (longitude/latitude/height/scale/heading/pitch/roll only — url,
+// id and label always come from the MODELS entry).
+function getEffectiveModelConfig(id) {
+  const base = getModelConfig(id);
+  if (!base) return null;
+  const saved = loadModelTransformOverrides()[id];
+  return saved ? { ...base, ...saved } : base;
 }
 
 // Populates the navbar <select id="modelSelect"> from the MODELS list.
@@ -513,9 +713,9 @@ function populateModelSelector() {
 
   select.value = DEFAULT_MODEL_ID;
 
-  // Selecting from the dropdown now only flies the camera to that
-  // model. It does NOT load/unload anything — both models stay loaded
-  // on the map at all times.
+  // Selecting from the dropdown flies the camera to that model,
+  // lazily downloading it first if it hasn't been loaded yet (see
+  // flyToModelId). Once loaded, a model stays on the map.
   select.addEventListener("change", (e) => {
     flyToModelId(e.target.value);
   });
@@ -528,16 +728,21 @@ function addPresetModelEntity(config) {
     return presetModelEntities[config.id];
   }
 
+  // Always resolve through the saved-override lookup by id, regardless of
+  // whether the caller already passed an effective config or a bare
+  // MODELS entry — this is the single place new entities get positioned.
+  const effective = getEffectiveModelConfig(config.id) || config;
+
   const position = Cesium.Cartesian3.fromDegrees(
-    config.longitude,
-    config.latitude,
-    config.height
+    effective.longitude,
+    effective.latitude,
+    effective.height
   );
 
   const hpr = new Cesium.HeadingPitchRoll(
-    Cesium.Math.toRadians(config.heading),
-    Cesium.Math.toRadians(config.pitch),
-    Cesium.Math.toRadians(config.roll)
+    Cesium.Math.toRadians(effective.heading),
+    Cesium.Math.toRadians(effective.pitch),
+    Cesium.Math.toRadians(effective.roll)
   );
 
   const entity = viewer.entities.add({
@@ -549,7 +754,7 @@ function addPresetModelEntity(config) {
     ),
     model: {
       uri: config.url,
-      scale: config.scale,
+      scale: effective.scale,
       heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
       shadows: Cesium.ShadowMode.DISABLED,
       color: Cesium.Color.WHITE.withAlpha(1.0),
@@ -566,7 +771,7 @@ function loadAllPresetModels(options = {}) {
   const select = document.getElementById("modelSelect");
   if (select) select.value = DEFAULT_MODEL_ID;
 
-  const defaultConfig = getModelConfig(DEFAULT_MODEL_ID);
+  const defaultConfig = getEffectiveModelConfig(DEFAULT_MODEL_ID);
   const elLon = document.getElementById("longitude");
   const elLat = document.getElementById("latitude");
   const elHeight = document.getElementById("height");
@@ -582,6 +787,9 @@ function loadAllPresetModels(options = {}) {
   if (elHeading) elHeading.value = defaultConfig.heading;
   if (elPitch) elPitch.value = defaultConfig.pitch;
   if (elRoll) elRoll.value = defaultConfig.roll;
+  const scaleLabel = document.getElementById("scaleValueLabel");
+  if (scaleLabel) scaleLabel.textContent = `${parseFloat(defaultConfig.scale).toFixed(1)}x`;
+  updateModelAdjustTargetLabel();
 
   // Add primary model (Manewada) directly to viewer
   const entity = addPresetModelEntity(defaultConfig);
@@ -608,26 +816,29 @@ function loadAllPresetModels(options = {}) {
 
   hideLoading();
 
-  // Load remaining models in background
-  setTimeout(() => {
-    MODELS.filter((m) => m.id !== DEFAULT_MODEL_ID).forEach((config) => {
-      addPresetModelEntity(config);
-    });
-  }, 1000);
+  if (typeof window.onLayoutChanged === "function") {
+    window.onLayoutChanged(DEFAULT_MODEL_ID);
+  }
+
+  // The other preset model (31-53MB GLB) is intentionally NOT preloaded
+  // here anymore — it used to download in the background 1s after
+  // startup regardless of whether the user ever looks at that area.
+  // It now loads lazily, on first switch to it (see flyToModelId), so
+  // the initial page load only ever pays for the model actually shown.
 
   // Load KMZ layers in background
   if (options.isInitial) {
     setTimeout(loadKMZLayers, 200);
   }
 
-  console.log("3D Terrain & model opened directly with Manewada as default.");
+  console.log(`3D Terrain & model opened directly with ${defaultConfig.label} as default.`);
 }
 
-// Flies the camera to an already-loaded preset model by id.
-// Both models remain on the map; this only moves the camera and
-// updates the form fields to reflect whichever one is now "current".
+// Flies the camera to a preset model by id, loading it first if this is
+// the first time it's been selected (see loadAllPresetModels — only the
+// default model is loaded at startup, everything else is lazy).
 function flyToModelId(id) {
-  const config = getModelConfig(id);
+  const config = getEffectiveModelConfig(id);
   if (!config) return;
 
   currentModelId = config.id;
@@ -642,9 +853,23 @@ function flyToModelId(id) {
   document.getElementById("heading").value = config.heading;
   document.getElementById("pitch").value = config.pitch;
   document.getElementById("roll").value = config.roll;
+  const scaleLabel = document.getElementById("scaleValueLabel");
+  if (scaleLabel) scaleLabel.textContent = `${parseFloat(config.scale).toFixed(1)}x`;
 
-  // No-op if this model is already loaded (it always is, after startup).
+  const wasAlreadyLoaded = !!presetModelEntities[config.id];
+  const label = document.getElementById("modelAdjustTarget");
+  if (!wasAlreadyLoaded && label) {
+    label.textContent = `Loading ${config.label}...`;
+  }
+
+  // No-op if this model is already loaded; otherwise downloads it now.
   const entity = addPresetModelEntity(config);
+
+  if (!wasAlreadyLoaded) {
+    setTimeout(() => updateModelAdjustTargetLabel(), 1500);
+  } else {
+    updateModelAdjustTargetLabel();
+  }
 
   viewer.flyTo(entity, {
     offset: new Cesium.HeadingPitchRange(
@@ -653,6 +878,10 @@ function flyToModelId(id) {
       520
     ),
   });
+
+  if (typeof window.onLayoutChanged === "function") {
+    window.onLayoutChanged(config.id);
+  }
 
   console.log(`Flying to ${config.label}`);
 }
@@ -663,3 +892,18 @@ function loadDefaultModel() {
   populateModelSelector();
   loadAllPresetModels({ isInitial: true });
 }
+
+// Since only the default preset model loads at startup (the other one is
+// lazy, see loadAllPresetModels), jumping straight to a house via search
+// needs to make sure that house's area model is actually on the map —
+// otherwise the polygon/pin shows up floating with no building mesh under
+// it. Does NOT move the camera; the caller (flyToHouse) handles that.
+function ensurePresetModelLoadedForHouseId(houseId) {
+  const idStr = String(houseId || "");
+  const isManish =
+    idStr.toUpperCase().startsWith("MN") || idStr.toLowerCase().includes("manish");
+  const modelId = isManish ? "manishnagar" : "manewada";
+  const config = getEffectiveModelConfig(modelId);
+  if (config) addPresetModelEntity(config);
+}
+window.ensurePresetModelLoadedForHouseId = ensurePresetModelLoadedForHouseId;

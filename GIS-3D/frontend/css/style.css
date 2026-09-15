@@ -1363,7 +1363,7 @@ input[type="range"]::-moz-range-thumb {
   right: 64px;
   display: none;
   width: 292px;
-  max-height: min(440px, calc(100vh - 110px));
+  max-height: min(480px, calc(100vh - 110px));
   z-index: 1585;
   border-radius: 13px;
   border: 1px solid rgba(108, 159, 240, 0.28);
@@ -1373,8 +1373,32 @@ input[type="range"]::-moz-range-thumb {
   box-shadow:
     0 14px 30px rgba(3, 10, 20, 0.42),
     0 0 0 1px rgba(120, 164, 232, 0.06);
-  overflow: hidden;
+  /* This panel stacks three cards (house details, banners, and the
+     Namuna/Notice/Appeal/Hearing forms card) whose combined natural height
+     regularly exceeds max-height. It used to be overflow:hidden, which
+     silently clipped — and made unclickable — whatever didn't fit, which
+     was almost always the third (forms) card. Scroll the whole panel
+     instead so every section stays reachable. */
+  overflow-y: auto;
+  overflow-x: hidden;
   backdrop-filter: blur(8px);
+}
+
+.banner-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.banner-section::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.banner-section::-webkit-scrollbar-thumb {
+  background: rgba(109, 160, 239, 0.28);
+  border-radius: 999px;
+}
+
+.banner-section:hover::-webkit-scrollbar-thumb {
+  background: rgba(125, 178, 255, 0.52);
 }
 
 .banner-section.banner-visible {
@@ -1559,6 +1583,12 @@ input[type="range"]::-moz-range-thumb {
   background: rgba(90, 200, 120, 0.28);
   color: #6fe38f;
   border: 1px solid rgba(90, 200, 120, 0.42);
+}
+
+.search-result-badge.location {
+  background: rgba(255, 90, 150, 0.26);
+  color: #ff8fb3;
+  border: 1px solid rgba(255, 90, 150, 0.4);
 }
 
 .search-result-badge.form-type-namuna {
@@ -2662,6 +2692,12 @@ body.light-theme .search-result-badge.atm {
   background: rgba(74, 163, 98, 0.16);
   color: #2f7a45;
   border-color: rgba(74, 163, 98, 0.34);
+}
+
+body.light-theme .search-result-badge.location {
+  background: rgba(224, 60, 118, 0.16);
+  color: #b7295c;
+  border-color: rgba(224, 60, 118, 0.34);
 }
 
 body.light-theme .sr-icon {

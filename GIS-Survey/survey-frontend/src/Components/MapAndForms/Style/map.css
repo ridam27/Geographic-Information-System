@@ -369,6 +369,19 @@
   color: #8a1f1f;
 }
 
+.gps-warning-banner {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #f2c9a3;
+  background: #fff6ea;
+  color: #8a4b13;
+  font-size: 12px;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .coord-card {
   margin-top: 12px;
   border-radius: 10px;
@@ -381,6 +394,64 @@
   font-size: 14px;
   font-weight: 700;
   margin-bottom: 8px;
+}
+
+.coord-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.coord-card-header .coord-title {
+  margin-bottom: 0;
+}
+
+.coord-source-chip {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid #c6d6eb;
+  background: #fff;
+  color: #33557a;
+}
+
+.coord-source-chip.pinned {
+  border-color: #f2c9a3;
+  background: #fff3e6;
+  color: #9a5a1a;
+}
+
+.coord-address {
+  font-size: 12px;
+  color: #33557a;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.use-live-gps-button {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: #0b7d61;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.use-live-gps-button:hover {
+  text-decoration: underline;
 }
 
 .coord-values {
@@ -407,6 +478,46 @@
   border-top: 1px solid #e5edf4;
   display: grid;
   gap: 6px;
+}
+
+.kmz-layer-chip {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
+  border: 1px solid #e2c6f2;
+  background: #faf2ff;
+  color: #7a1fa8;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.kmz-layer-chip-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kmz-layer-chip-remove {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: #7a1fa8;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.kmz-error-text {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: #b63e3e;
+  margin: 0;
 }
 
 .proceed-button {
@@ -471,6 +582,153 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+
+.map-search-card {
+  flex-shrink: 0;
+  position: relative;
+  /* Flex items respect z-index even with position: static, so this lifts
+     the whole card (and its dropdown) above the map-wrapper flex item that
+     follows it in the DOM — otherwise that sibling's own stacking context
+     (from the shared .fade-in-item transform) paints over the dropdown. */
+  z-index: 5;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  box-shadow: 0 12px 28px -18px rgba(30, 42, 70, 0.35);
+}
+
+.map-search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d7e2ee;
+  background: #f9fbfd;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.map-search-icon {
+  flex-shrink: 0;
+  color: #6b86a6;
+}
+
+.map-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.map-search-input::placeholder {
+  color: #8ba0bd;
+}
+
+.map-search-spinner {
+  flex-shrink: 0;
+  color: #6b86a6;
+  animation: spin 1s linear infinite;
+}
+
+.map-search-clear {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: #6b86a6;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.map-search-error {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #b63e3e;
+}
+
+.map-search-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.map-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 12px;
+  right: 12px;
+  z-index: 900;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #d7e2ee;
+  border-radius: 12px;
+  box-shadow: 0 16px 32px rgba(30, 42, 70, 0.18);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.map-search-results li + li {
+  margin-top: 2px;
+}
+
+.map-search-results button {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 12px;
+  color: #24425f;
+  cursor: pointer;
+}
+
+.map-search-results button:hover {
+  background: #eef5ff;
+}
+
+.map-search-result-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #33557a;
+}
+
+.leaflet-selected-pin {
+  background: transparent;
+  border: none;
+}
+
+.selected-pin-dot {
+  display: block;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto;
+}
+
+.selected-pin-dot::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 18px;
+  height: 18px;
+  background: #e11d48;
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: translateX(-50%) rotate(-45deg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 .map-wrapper {
@@ -721,12 +979,76 @@
   border-color: #1e3050;
 }
 
+.dark .gps-warning-banner {
+  background: #2a1f10;
+  border-color: #5a4218;
+  color: #f0b060;
+}
+
+.dark .coord-source-chip {
+  background: #1a2640;
+  border-color: #2a3a56;
+  color: #7ec8f5;
+}
+
+.dark .coord-source-chip.pinned {
+  background: #2a1f10;
+  border-color: #5a4218;
+  color: #f0b060;
+}
+
+.dark .coord-address {
+  color: #7ec8f5;
+}
+
+.dark .use-live-gps-button {
+  color: #4dd4a8;
+}
+
+.dark .map-search-input-wrap {
+  background: #101a2c;
+  border-color: #2a3a56;
+}
+
+.dark .map-search-icon,
+.dark .map-search-spinner,
+.dark .map-search-clear {
+  color: #7ec8f5;
+}
+
+.dark .map-search-results {
+  background: #131e30;
+  border-color: #2a3a56;
+}
+
+.dark .map-search-results button {
+  color: #cfe0f5;
+}
+
+.dark .map-search-results button:hover {
+  background: #1e3050;
+}
+
+.dark .map-search-result-icon {
+  color: #7ec8f5;
+}
+
 .dark .meta-row {
   color: #5e7fa8;
 }
 
 .dark .proceed-button-container {
   border-top-color: #1e2e46;
+}
+
+.dark .kmz-layer-chip {
+  background: #2a1a3a;
+  border-color: #4a2a66;
+  color: #d896f5;
+}
+
+.dark .kmz-layer-chip-remove {
+  color: #d896f5;
 }
 
 .dark .secondary-action {
@@ -856,6 +1178,14 @@
   .layout-left {
     max-height: none;
     overflow: visible;
+  }
+
+  .map-search-card {
+    padding: 8px 10px;
+  }
+
+  .map-search-hint {
+    display: none;
   }
 
   .location-card {

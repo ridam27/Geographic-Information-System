@@ -441,6 +441,10 @@ body {
 
 /* ---------- Frame panel ---------- */
 
+.framepanel-stack { position: relative; flex: 1; min-height: 0; }
+
+.framepanel-slot { position: absolute; inset: 0; }
+
 .framepanel { display: flex; flex-direction: column; height: 100%; }
 
 .framepanel__bar {

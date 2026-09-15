@@ -112,7 +112,14 @@ async function loadStaticRoadKMZ() {
 
   isRoadKmzLoaded = true;
   const ds = ensureRoadsDataSource();
-  const kmzFiles = ["roads.kmz", "paths.kmz"];
+  const kmzFiles = ["roads.kmz", "paths.kmz", encodeURI("Manish Nagar Roads.kmz")];
+
+  // How far above real ground the road overlay is lifted so the 3D model
+  // (a raised photogrammetry/GLB mesh, not actual terrain) can never draw
+  // over it. clampToGround/CLAMP_TO_GROUND only classify against terrain
+  // and registered 3D Tilesets — never against a plain Model entity — which
+  // is exactly why the model was rendering on top of the roads before.
+  const ROAD_ELEVATION_MARGIN = 25; // meters above real terrain
 
   for (const file of kmzFiles) {
     const kmlDs = await loadKmzFileToKmlDataSource(file);
@@ -121,10 +128,85 @@ async function loadStaticRoadKMZ() {
     const allEntities = kmlDs.entities.values;
     console.log(`Loaded ${allEntities.length} road features from ${file}`);
 
+    // Gather every polyline/polygon vertex so we can resolve real ground
+    // elevation for all of them in one batched terrain request, then lift
+    // the geometry above the model instead of clamping it to the ground.
+    const cartoBatch = [];
+    const lineJobs = [];
+    const polyJobs = [];
+
+    allEntities.forEach((entity) => {
+      if (entity.polyline) {
+        const positions = entity.polyline.positions?.getValue(viewer.clock.currentTime);
+        if (positions && positions.length) {
+          const start = cartoBatch.length;
+          positions.forEach((p) => cartoBatch.push(Cesium.Cartographic.fromCartesian(p)));
+          lineJobs.push({ entity, start, count: positions.length });
+        }
+      } else if (entity.polygon) {
+        const hierarchy = entity.polygon.hierarchy?.getValue(viewer.clock.currentTime);
+        const positions = hierarchy && hierarchy.positions;
+        if (positions && positions.length) {
+          const start = cartoBatch.length;
+          positions.forEach((p) => cartoBatch.push(Cesium.Cartographic.fromCartesian(p)));
+          polyJobs.push({ entity, start, count: positions.length });
+        }
+      }
+    });
+
+    // Only trust the sampled heights if terrain sampling actually
+    // succeeds — falling back to raw (often 0/ellipsoid-relative) heights
+    // would float or bury the roads, which is worse than the original
+    // clampToGround behavior. On failure we just keep clampToGround: true
+    // (the pre-existing, imperfect-but-safe behavior).
+    let terrainSampled = false;
+    if (cartoBatch.length > 0) {
+      try {
+        await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, cartoBatch);
+        terrainSampled = true;
+      } catch (e) {
+        console.warn(`Terrain sampling failed for ${file}, roads will stay ground-clamped (may render under the model):`, e);
+      }
+    }
+
+    const raisePositions = (start, count) => {
+      const raised = [];
+      for (let i = 0; i < count; i++) {
+        const c = cartoBatch[start + i];
+        raised.push(
+          Cesium.Cartesian3.fromRadians(
+            c.longitude,
+            c.latitude,
+            (c.height || 0) + ROAD_ELEVATION_MARGIN
+          )
+        );
+      }
+      return raised;
+    };
+
+    if (terrainSampled) {
+      lineJobs.forEach(({ entity, start, count }) => {
+        entity.polyline.positions = raisePositions(start, count);
+        entity.polyline.clampToGround = false;
+      });
+
+      polyJobs.forEach(({ entity, start, count }) => {
+        entity.polygon.hierarchy = raisePositions(start, count);
+        entity.polygon.perPositionHeight = true;
+        entity.polygon.heightReference = undefined;
+      });
+    } else {
+      lineJobs.forEach(({ entity }) => {
+        entity.polyline.clampToGround = true;
+      });
+      polyJobs.forEach(({ entity }) => {
+        entity.polygon.heightReference = Cesium.HeightReference.CLAMP_TO_GROUND;
+      });
+    }
+
     allEntities.forEach((entity) => {
       if (entity.polygon) {
         entity.polygon.material = Cesium.Color.RED.withAlpha(0.65);
-        entity.polygon.heightReference = Cesium.HeightReference.CLAMP_TO_GROUND;
         entity.polygon.outline = true;
         entity.polygon.outlineColor = Cesium.Color.WHITE.withAlpha(0.9);
         entity.polygon.outlineWidth = 2.0;
@@ -132,8 +214,19 @@ async function loadStaticRoadKMZ() {
       if (entity.polyline) {
         entity.polyline.material = Cesium.Color.RED.withAlpha(0.85);
         entity.polyline.width = 10.0;
-        entity.polyline.clampToGround = true;
+        // Belt-and-suspenders: the geometry is already lifted above the
+        // model, but depthFailMaterial (only honored when clampToGround is
+        // false, which it now is) keeps the line visible even if some
+        // local part of the model still pokes above the margin.
+        entity.polyline.depthFailMaterial = Cesium.Color.RED.withAlpha(0.85);
       }
+
+      // Some exported KMZs (e.g. Google Earth "Temporary Places") mark
+      // placemarks/folders as visibility=0 by default, which Cesium's
+      // KmlDataSource maps to entity.show = false — so the geometry loads
+      // but never renders. Force it visible since these are always-on
+      // static layers, not something the KML author actually meant to hide.
+      entity.show = true;
 
       // Add entity to roadsDataSource
       ds.entities.add(entity);

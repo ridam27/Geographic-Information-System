@@ -108,12 +108,16 @@
 
   function getMockPropertyFormsForHouse(houseId) {
     if (!houseId) return [];
+    if (!window.isHouseFlaggedForCivicRecords || !window.isHouseFlaggedForCivicRecords(houseId)) {
+      return [];
+    }
+
     const digits = String(houseId).replace(/\D/g, "");
     const num = digits ? parseInt(digits, 10) : 101;
     const isManish = String(houseId).toUpperCase().includes("MN");
     const wardName = isManish ? "Ward 36 (Manish Nagar)" : "Ward 12 (Manewada)";
 
-    return [
+    const allForms = [
       {
         _id: `form-${num}-1`,
         houseId: houseId,
@@ -152,6 +156,12 @@
         status: "Scheduled",
       },
     ];
+
+    // Even a flagged house rarely has all four record types open at once —
+    // pick a deterministic (but house-specific) count of 1-2 so it reads
+    // like a real, sparse civic record instead of a full stack every time.
+    const formCount = (num % 2 === 0) ? 2 : 1;
+    return allForms.slice(0, formCount);
   }
 
   async function fetchPropertyFormsForHouseId(houseId) {

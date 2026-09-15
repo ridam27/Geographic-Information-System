@@ -567,3 +567,241 @@ body.light-theme .selected-house-value {
         border-radius: 0;
     }
 }
+
+/* =====================================
+   GEOTAGGED SURVEY MEDIA — PHOTO LIGHTBOX
+   & VIDEO PLAYER MODALS
+===================================== */
+
+.survey-media-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+}
+
+.survey-media-modal.active {
+    display: flex;
+}
+
+.survey-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(4, 10, 20, 0.72);
+    backdrop-filter: blur(10px);
+}
+
+.survey-modal-window {
+    position: relative;
+    width: min(720px, 96vw);
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 16px;
+    border: 1px solid rgba(126, 180, 255, 0.28);
+    background: linear-gradient(180deg, rgba(12, 23, 44, 0.97), rgba(7, 14, 28, 0.98));
+    box-shadow:
+        0 24px 54px rgba(0, 0, 0, 0.48),
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+.survey-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(119, 173, 255, 0.22);
+    gap: 12px;
+    flex: 0 0 auto;
+}
+
+.survey-modal-header.photo-header {
+    background: linear-gradient(90deg, rgba(6, 182, 212, 0.16), transparent 60%);
+}
+
+.survey-modal-header.video-header {
+    background: linear-gradient(90deg, rgba(244, 63, 94, 0.16), transparent 60%);
+}
+
+.survey-modal-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.survey-modal-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.survey-modal-title-group h3 {
+    margin: 0;
+    font-size: 15px;
+    color: #dcebff;
+}
+
+.survey-layout-tag {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7ea7dc;
+}
+
+.survey-modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+
+.modal-icon-btn {
+    border: none;
+    background: transparent;
+    color: #9fbbdf;
+    font-size: 16px;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+}
+
+.modal-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #eaf4ff;
+}
+
+.modal-icon-btn.close:hover {
+    background: rgba(244, 63, 94, 0.18);
+    color: #ffd7dd;
+}
+
+.survey-modal-body {
+    flex: 1 1 auto;
+    overflow: auto;
+    background: #05090f;
+    display: flex;
+}
+
+.media-view-wrapper {
+    position: relative;
+    width: 100%;
+    min-height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.survey-image-display {
+    width: 100%;
+    max-height: min(70vh, 560px);
+    object-fit: contain;
+    display: block;
+}
+
+.survey-video-display {
+    width: 100%;
+    max-height: min(70vh, 560px);
+    background: #000;
+    display: block;
+}
+
+.survey-media-error {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 40px 24px;
+    text-align: center;
+    color: #b2caea;
+}
+
+.survey-media-error.hidden {
+    display: none;
+}
+
+.survey-media-error:not(.hidden) {
+    display: flex;
+}
+
+.survey-media-error .error-icon {
+    font-size: 28px;
+}
+
+.survey-media-error h4 {
+    margin: 0;
+    color: #dcebff;
+    font-size: 14px;
+}
+
+.survey-media-error p {
+    margin: 0;
+    font-size: 12px;
+    color: #8ca8cf;
+}
+
+.survey-media-error code {
+    font-size: 11px;
+    color: #ffd7dd;
+    background: rgba(244, 63, 94, 0.12);
+    border-radius: 6px;
+    padding: 4px 8px;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.survey-media-error .error-hint {
+    font-size: 10px;
+    color: #6f88ab;
+}
+
+.survey-modal-footer {
+    flex: 0 0 auto;
+    padding: 12px 16px 16px;
+    border-top: 1px solid rgba(119, 173, 255, 0.18);
+}
+
+.survey-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.survey-meta-item {
+    display: grid;
+    gap: 4px;
+}
+
+.survey-meta-item.wide {
+    grid-column: 1 / -1;
+}
+
+.survey-meta-item .meta-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7ea7dc;
+}
+
+.survey-meta-item .meta-value {
+    font-size: 12px;
+    color: #e9f4ff;
+}
+
+.survey-meta-item .meta-value.path-mono {
+    font-family: "Consolas", "SFMono-Regular", Menlo, monospace;
+    font-size: 11px;
+    color: #9fc0e9;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+    .survey-meta-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

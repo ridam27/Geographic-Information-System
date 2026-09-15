@@ -18,24 +18,24 @@
   <title>GeoVis Professional Property Viewer</title>
 
   <!-- Cesium -->
-  <script src="https://cesium.com/downloads/cesiumjs/releases/1.104/Build/Cesium/Cesium.js"></script>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.104/Build/Cesium/Cesium.js" defer></script>
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.104/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
 
 
   <!-- Three.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/OBJLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/MTLLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/exporters/GLTFExporter.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/OBJLoader.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/MTLLoader.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/exporters/GLTFExporter.js" defer></script>
 
   <!-- Utils -->
-  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js" defer></script>
 
   <!-- Socket -->
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 
 
   <!-- Styles -->
@@ -68,8 +68,10 @@
             <option value="pipeline">Pipeline</option>
             <option value="flyover">Flyover</option>
             <option value="atm">ATM</option>
+            <option value="location">Location / Lat,Long</option>
           </select>
-          <input type="text" id="searchInput" placeholder="Search property, pole, manhole, pipeline, flyover or ATM"
+          <input type="text" id="searchInput"
+            placeholder="Search property, pole, manhole, pipeline, flyover, ATM, place name or lat,long"
             oninput="debounce(searchProperties, 300)()" onfocus="searchProperties()"
             onkeydown="if(event.key==='Enter'){event.preventDefault();searchProperties(true);}" autocomplete="off" />
         </div>
@@ -151,6 +153,19 @@
                 <span class="layer-status status-loading" id="housesStatus">Loading...</span>
               </div>
             </div>
+
+            <div class="layer-toggle-row">
+              <div class="layer-toggle" onclick="toggleLayer('photos')">
+                <input type="checkbox" id="photosToggle" checked onclick="event.stopPropagation(); toggleLayer('photos')" />
+                <label for="photosToggle">📷 Photos</label>
+                <span class="layer-status status-loaded" id="photosStatus">Loaded</span>
+              </div>
+              <div class="layer-toggle" onclick="toggleLayer('videos')">
+                <input type="checkbox" id="videosToggle" checked onclick="event.stopPropagation(); toggleLayer('videos')" />
+                <label for="videosToggle">🎥 Videos</label>
+                <span class="layer-status status-loaded" id="videosStatus">Loaded</span>
+              </div>
+            </div>
           </div>
         </div>
       </details>
@@ -178,17 +193,64 @@
           </div>
         </div>
       </details>
-    </div>
-  </div>
 
-  <div id="cameraScaleInputs" hidden>
-    <input type="number" id="heading" />
-    <input type="number" id="pitch" />
-    <input type="number" id="roll" />
-    <input type="number" id="longitude" />
-    <input type="number" id="latitude" />
-    <input type="number" id="height" />
-    <input type="number" id="scale" value="50.1" step="0.1" min="0.1" max="100" />
+      <details class="sidebar-group" id="modelAdjustGroup">
+        <summary>Model Adjustment (Live)</summary>
+        <div class="sidebar-group-body">
+          <p class="section-caption" id="modelAdjustTarget">Adjusting: Manish Nagar</p>
+
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin:4px 0 8px;">
+            <input type="checkbox" id="applyToAllModels" />
+            Apply to all uploaded models
+          </label>
+
+          <div class="input-group six-grid">
+            <div>
+              <label for="longitude">Longitude</label>
+              <input type="number" id="longitude" step="0.000001" />
+            </div>
+            <div>
+              <label for="latitude">Latitude</label>
+              <input type="number" id="latitude" step="0.000001" />
+            </div>
+            <div>
+              <label for="height">Height (m)</label>
+              <input type="number" id="height" step="0.1" />
+            </div>
+            <div>
+              <label for="heading">Heading (°)</label>
+              <input type="number" id="heading" step="1" />
+            </div>
+            <div>
+              <label for="pitch">Pitch (°)</label>
+              <input type="number" id="pitch" step="1" />
+            </div>
+            <div>
+              <label for="roll">Roll (°)</label>
+              <input type="number" id="roll" step="1" />
+            </div>
+          </div>
+
+          <div class="model-opacity-block">
+            <label class="model-opacity-label" for="scale">Model Scale</label>
+            <input type="range" id="scale" min="0.1" max="20" step="0.1" value="1" class="opacity-slider"
+              oninput="document.getElementById('scaleValueLabel').textContent = parseFloat(this.value).toFixed(1) + 'x'" />
+            <div class="slider-label">
+              <span>0.1x</span>
+              <span id="scaleValueLabel">1.0x</span>
+              <span>20x</span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button type="button" class="action-btn" style="flex:1;"
+              onclick="saveActiveModelTransform()">💾 Save Location</button>
+            <button type="button" class="action-btn" style="flex:1;"
+              onclick="resetActiveModelTransform()">Reset to Default</button>
+          </div>
+        </div>
+      </details>
+    </div>
   </div>
 
 
@@ -242,7 +304,7 @@
         </details>
       </div>
 
-      <div class="map-statusbar" aria-label="Camera coordinates">
+      <div class="map-statusbar" aria-label="Map coordinates">
         <span>LON <strong id="hudLon">--</strong></span>
         <span>LAT <strong id="hudLat">--</strong></span>
         <span>ALT <strong id="hudAlt">--</strong></span>
@@ -272,7 +334,7 @@
     // comes from the separate survey backend.
     const isLocal3DHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
     window.GLOVE_BACKEND_URL = isLocal3DHost
-      ? "http://localhost:4000"
+      ? "http://localhost:4001"
       : "https://geographic-information-system.onrender.com";
     window.SURVEY_BACKEND_URL = isLocal3DHost
       ? "http://localhost:4002"
@@ -282,29 +344,30 @@
        ptax_data.js calls window.resolveSurveyBackendBase(), which is
        defined in 1_config_globals.js. Loading it after caused ptax_data.js
        to silently fall back to http://localhost:5001 in production. -->
-  <script src="js/1_config_globals.js"></script>
-  <script src="ptax_data.js"></script>
-  <script src="js/2_ui_helpers.js"></script>
-  <script src="js/3_utils.js"></script>
-  <script src="js/4_model_manager.js"></script>
-  <script src="js/5_layer_manager.js"></script>
-  <script src="js/roadSurvey3D.js"></script>
-  <script src="js/ptax_pdf_report.js"></script>
-  <script src="js/6_search_feature.js"></script>
-  <script src="js/9_measurement_tool.js"></script>
-  <script src="js/7_main.js"></script>
-  <script src="js/10_banner_manager.js"></script>
-  <script src="js/13_property_forms.js"></script>
-  <script src="js/8_mapillary_streetview.js"></script>
-  <script src="js/conversion.js"></script>
-  <script src="js/pole_placement.js"></script>
-  <script src="js/manhole_placement.js"></script>
-  <script src="js/atm_placement.js"></script>
-  <script src="js/scene.js"></script>
-  <script src="js/sewagePipeline.js"></script>
-  <script src="js/flyover_placement.js"></script>
-  <script src="js/11_area_report_tool.js"></script>
-  <script src="js/12_polygon_query_tool.js"></script>
+  <script src="js/1_config_globals.js" defer></script>
+  <script src="ptax_data.js" defer></script>
+  <script src="js/2_ui_helpers.js" defer></script>
+  <script src="js/3_utils.js" defer></script>
+  <script src="js/4_model_manager.js" defer></script>
+  <script src="js/5_layer_manager.js" defer></script>
+  <script src="js/roadSurvey3D.js" defer></script>
+  <script src="js/ptax_pdf_report.js" defer></script>
+  <script src="js/6_search_feature.js" defer></script>
+  <script src="js/9_measurement_tool.js" defer></script>
+  <script src="js/7_main.js" defer></script>
+  <script src="js/10_banner_manager.js" defer></script>
+  <script src="js/13_property_forms.js" defer></script>
+  <script src="js/8_mapillary_streetview.js" defer></script>
+  <script src="js/conversion.js" defer></script>
+  <script src="js/pole_placement.js" defer></script>
+  <script src="js/manhole_placement.js" defer></script>
+  <script src="js/atm_placement.js" defer></script>
+  <script src="js/scene.js" defer></script>
+  <script src="js/sewagePipeline.js" defer></script>
+  <script src="js/flyover_placement.js" defer></script>
+  <script src="js/11_area_report_tool.js" defer></script>
+  <script src="js/12_polygon_query_tool.js" defer></script>
+  <script src="js/14_geotagged_media_manager.js" defer></script>
 
   <!-- Street View Panel -->
   <div id="streetViewPanel" class="street-view-panel hidden">
@@ -1178,29 +1241,72 @@
       viewer.camera.zoomOut(viewer.camera.positionCartographic.height * 0.2);
     });
 
-    function refreshHud() {
-      if (typeof viewer === "undefined" || !hudLon || !hudLat || !hudAlt) return;
+    // True once the pointer is actively over the map — while hovering,
+    // LON/LAT/ALT track the exact ground/model point under the cursor
+    // instead of the camera's own position.
+    let isHoveringMap = false;
 
-      const c = viewer.camera.positionCartographic;
-      const lon = Cesium.Math.toDegrees(c.longitude).toFixed(5);
-      const lat = Cesium.Math.toDegrees(c.latitude).toFixed(5);
-      const alt = c.height.toFixed(0);
+    function refreshHud() {
+      if (typeof viewer === "undefined") return;
+
       const heading = Cesium.Math.toDegrees(viewer.camera.heading);
       const normalizedHeading = ((heading % 360) + 360) % 360;
       const pitch = Cesium.Math.toDegrees(viewer.camera.pitch);
       const roll = Cesium.Math.toDegrees(viewer.camera.roll);
-
-      hudLon.textContent = lon;
-      hudLat.textContent = lat;
-      hudAlt.textContent = `${alt} m`;
       if (navHeading) navHeading.textContent = `${normalizedHeading.toFixed(1)}°`;
       if (navPitch) navPitch.textContent = `${pitch.toFixed(1)}°`;
       if (navRoll) navRoll.textContent = `${roll.toFixed(1)}°`;
+
+      // Fall back to the camera's position for LON/LAT/ALT whenever the
+      // pointer isn't over the map (e.g. right after load, or while using
+      // the zoom buttons) — updateHoverCoords() below takes over as soon as
+      // the mouse moves over the canvas.
+      if (!isHoveringMap && hudLon && hudLat && hudAlt) {
+        const c = viewer.camera.positionCartographic;
+        hudLon.textContent = Cesium.Math.toDegrees(c.longitude).toFixed(5);
+        hudLat.textContent = Cesium.Math.toDegrees(c.latitude).toFixed(5);
+        hudAlt.textContent = `${c.height.toFixed(0)} m`;
+      }
+    }
+
+    // Picks the actual terrain/3D-model/road surface under the cursor (not
+    // just the flat ellipsoid), so ALT reflects a rooftop or road height the
+    // same way LON/LAT reflect that exact spot — falls back to the bare
+    // ellipsoid intersection when nothing renders at that pixel (e.g. right
+    // at the horizon), and leaves the HUD unchanged when the pointer is off
+    // the globe entirely (pointing at open sky).
+    function updateHoverCoords(windowPosition) {
+      if (typeof viewer === "undefined" || !hudLon || !hudLat || !hudAlt) return;
+
+      let cartesian;
+      if (viewer.scene.pickPositionSupported) {
+        cartesian = viewer.scene.pickPosition(windowPosition);
+      }
+      if (!Cesium.defined(cartesian)) {
+        cartesian = viewer.camera.pickEllipsoid(windowPosition, viewer.scene.globe.ellipsoid);
+      }
+      if (!Cesium.defined(cartesian)) return;
+
+      const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+      hudLon.textContent = Cesium.Math.toDegrees(cartographic.longitude).toFixed(5);
+      hudLat.textContent = Cesium.Math.toDegrees(cartographic.latitude).toFixed(5);
+      hudAlt.textContent = `${cartographic.height.toFixed(0)} m`;
     }
 
     if (typeof viewer !== "undefined") {
       refreshHud();
       viewer.camera.changed.addEventListener(refreshHud);
+
+      const hudHoverHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+      hudHoverHandler.setInputAction((movement) => {
+        isHoveringMap = true;
+        updateHoverCoords(movement.endPosition);
+      }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+      viewer.scene.canvas.addEventListener("mouseleave", () => {
+        isHoveringMap = false;
+        refreshHud(); // restore the camera-position fallback
+      });
     }
   </script>
 

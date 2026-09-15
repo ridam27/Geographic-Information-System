@@ -17,6 +17,23 @@ const BANNER_API_BASE =
     ? window.resolveGloveApiBase()
     : "https://geographic-information-system.onrender.com/api";
 
+// Real municipal data doesn't hit every house — only a small, fixed slice
+// of a residential layout actually has an active notice/hearing/banner at
+// any given time. Deterministic per house id (same house always shows the
+// same thing) but selects roughly 15% of houses, so a ~100-house layout
+// gets ~15 flagged houses instead of all of them.
+if (!window.isHouseFlaggedForCivicRecords) {
+  window.isHouseFlaggedForCivicRecords = function (houseId) {
+    const str = String(houseId || "");
+    if (!str) return false;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    }
+    return hash % 100 < 15;
+  };
+}
+
 scheduleBannerUiPosition();
 
 window.addEventListener("resize", scheduleBannerUiPosition);
@@ -660,6 +677,7 @@ async function loadBannerListByAliases(aliases) {
 
 function getMockBannersForHouse(houseId) {
   if (!houseId) return [];
+  if (!window.isHouseFlaggedForCivicRecords(houseId)) return [];
   const digits = String(houseId).replace(/\D/g, "");
   const num = digits ? parseInt(digits, 10) : 101;
   const isManish = String(houseId).toUpperCase().includes("MN");

@@ -54,7 +54,7 @@ viewer.resolutionScale = Math.min(window.devicePixelRatio || 1, 1.5);
 
 // Directly position camera to 3D terrain location immediately on startup
 viewer.camera.setView({
-  destination: Cesium.Cartesian3.fromDegrees(79.109468, 21.096398, 1200),
+  destination: Cesium.Cartesian3.fromDegrees(79.09757, 21.10189, 1200),
   orientation: {
     heading: Cesium.Math.toRadians(0),
     pitch: Cesium.Math.toRadians(-30.0),

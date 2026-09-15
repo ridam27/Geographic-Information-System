@@ -20,16 +20,9 @@ document
 document
   .getElementById("height")
   .addEventListener("input", debounce(updateModelPosition, 300));
-document.getElementById("scale").addEventListener(
-  "input",
-  debounce(() => {
-    if (modelEntity) {
-      modelEntity.model.scale = parseFloat(
-        document.getElementById("scale").value || 1.0
-      );
-    }
-  }, 300)
-);
+document
+  .getElementById("scale")
+  .addEventListener("input", debounce(updateActiveModelScale, 300));
 
 window.addEventListener("beforeunload", function () {
   for (const url in textureUrlCache) {
@@ -94,6 +87,14 @@ handler.setInputAction(function (click) {
 
     const clickedEntity =
       pickedObject.id;
+
+    // 📷🎥 Geotagged Photo/Video pin clicked — open the media viewer immediately
+    if (
+      typeof window.GeotaggedMediaManager !== "undefined" &&
+      window.GeotaggedMediaManager.checkMediaEntityPicked(clickedEntity)
+    ) {
+      return;
+    }
 
     // 3️⃣ If house clicked (preloaded houses layer OR a realtime/user-added property)
     const isPreloadedHouse =

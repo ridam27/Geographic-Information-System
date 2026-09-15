@@ -1,13 +1,15 @@
 // MapComponent.js (ready to paste)
 import { useState, useEffect, useRef, useCallback } from 'react';
 // --- NAYA IMPORT (Download icon ke liye) ---
-import { MapPin, Navigation, Loader, Crosshair, CheckSquare, Download, Sun, Moon, Satellite, LogOut, ChevronDown } from 'lucide-react';
+import { MapPin, Navigation, Loader, Crosshair, CheckSquare, Download, Upload, Sun, Moon, Satellite, LogOut, ChevronDown, Search, X } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 // --- NAYE IMPORTS (Leaflet-Draw ke liye) ---
 import 'leaflet-draw/dist/leaflet.draw.css';
 import 'leaflet-draw';
 import tokml from 'tokml'; // KML export ke liye
+import JSZip from 'jszip'; // KMZ unzip karne ke liye (KMZ = zipped KML)
+import { kml as kmlToGeoJSON } from '@tmcw/togeojson'; // KML -> GeoJSON, plot karne ke liye
 import { io } from 'socket.io-client';
 import '../Style/map.css';
 import FormSelectionModal from './FormSelectionModal';
@@ -36,14 +38,70 @@ const socket = io('https://geo-survey-backend-2fy8.onrender.com/'); // change or
    Provide completeness (accuracy/altitude etc.) so other logic doesn't get undefined.
    ========================= */
 const FALLBACK_LOCATION = {
-  lat: 21.096398,
-  lng: 79.109468,
+  lat: 21.10189, 
+  lng: 79.09757,
   accuracy: 5, // pretend good accuracy to avoid 'undefined' checks elsewhere
   altitude: 0,
   altitudeAccuracy: null,
   heading: null,
   speed: null,
 };
+
+// Turn a GeolocationPositionError (or our own "unsupported" string) into a
+// message that actually tells the user what to do about it. error.message
+// varies by browser and is often unhelpful ("User denied Geolocation"), so
+// we key off error.code instead.
+function describeGeoError(err) {
+  if (!err) return 'Unable to get your location.';
+  if (typeof err === 'string') return err;
+  switch (err.code) {
+    case 1: // PERMISSION_DENIED
+      if (typeof window !== 'undefined' && window.isSecureContext === false) {
+        return 'Location needs a secure connection (HTTPS or localhost) — this page is loaded over plain HTTP from a non-local address.';
+      }
+      return 'Location permission is blocked. Allow location for this site in the browser, and check that Location Services is turned on in your OS settings.';
+    case 2: // POSITION_UNAVAILABLE
+      return "Your device/browser couldn't determine a location. Check that Location Services is turned on.";
+    case 3: // TIMEOUT
+      return 'Getting your location took too long — your network-based location lookup may be slow or unreachable.';
+    default:
+      return err.message || 'Unable to get your location.';
+  }
+}
+
+// Runs one navigator.geolocation.watchPosition attempt with the given
+// options and reports back via onSuccess/onFail.
+function watchOnce(options, onSuccess, onFail) {
+  let bestAccuracy = Infinity;
+  let attempts = 0;
+  const maxAttempts = 5;
+  const watchId = navigator.geolocation.watchPosition(
+    (position) => {
+      attempts++;
+      const currentAccuracy = position.coords.accuracy;
+      if (currentAccuracy < bestAccuracy) {
+        bestAccuracy = currentAccuracy;
+        onSuccess({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          altitude: position.coords.altitude,
+          altitudeAccuracy: position.coords.altitudeAccuracy,
+          heading: position.coords.heading,
+          speed: position.coords.speed,
+        });
+      }
+      if (attempts >= maxAttempts || currentAccuracy < 10) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    },
+    (error) => {
+      navigator.geolocation.clearWatch(watchId);
+      onFail(error);
+    },
+    options
+  );
+}
 
 export default function MapComponent() {
   const [location, setLocation] = useState(null);
@@ -55,15 +113,34 @@ export default function MapComponent() {
   const [polygonLocation, setPolygonLocation] = useState(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [usingFallbackLocation, setUsingFallbackLocation] = useState(false);
+  const [geoErrorReason, setGeoErrorReason] = useState(null);
   const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  // --- Location search + click-to-pin state ---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+  const [selectedPoint, setSelectedPoint] = useState(null); // { lat, lng, label, timestamp } | null
+
+  // --- KMZ/KML import (plot reference boundaries/roads on the map) ---
+  const [kmzLoading, setKmzLoading] = useState(false);
+  const [kmzError, setKmzError] = useState(null);
+  const [kmzFileName, setKmzFileName] = useState(null);
 
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
   const circleRef = useRef(null);
   const drawnItemsRef = useRef(null);
+  const selectedMarkerRef = useRef(null);
+  const isDrawingRef = useRef(false);
   const locationRequestedRef = useRef(false);
   const userMenuRef = useRef(null);
+  const searchDebounceRef = useRef(null);
+  const searchAbortRef = useRef(null);
+  const kmzInputRef = useRef(null);
+  const kmzLayerRef = useRef(null);
 
   const { isAuthenticated, authLoading, logout, user } = useAuth();
   const navigate = useNavigate();
@@ -155,47 +232,258 @@ export default function MapComponent() {
   };
 }
 
-  // ... (fetchAccurateLocation function waisa hi hai) ...
+  // Most desktops/laptops have no GPS chip, so a GPS-preferring
+  // (enableHighAccuracy) request routinely fails or times out on them.
+  // Try that first for the best possible fix, then fall back to a
+  // network/Wi-Fi based request (which desktops resolve far more
+  // reliably) before giving up and reporting an error.
   const fetchAccurateLocation = useCallback((onSuccess, onError) => {
     if (!navigator.geolocation) {
       onError('Geolocation is not supported by your browser');
       return;
     }
-    let bestAccuracy = Infinity;
-    let attempts = 0;
-    const maxAttempts = 5;
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        attempts++;
-        const currentAccuracy = position.coords.accuracy;
-        if (currentAccuracy < bestAccuracy) {
-          bestAccuracy = currentAccuracy;
-          const newLocation = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            altitude: position.coords.altitude,
-            altitudeAccuracy: position.coords.altitudeAccuracy,
-            heading: position.coords.heading,
-            speed: position.coords.speed,
-          };
-          onSuccess(newLocation);
+
+    watchOnce(
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
+      onSuccess,
+      (firstError) => {
+        if (firstError.code === firstError.PERMISSION_DENIED) {
+          onError(firstError);
+          return;
         }
-        if (attempts >= maxAttempts || currentAccuracy < 10) {
-          navigator.geolocation.clearWatch(watchId);
-        }
-      },
-      (error) => {
-        onError(error.message);
-        navigator.geolocation.clearWatch(watchId);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+        watchOnce(
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 },
+          onSuccess,
+          (secondError) => onError(secondError)
+        );
       }
     );
   }, []);
+
+  // Jumps the map + "Current Coordinates" card to an exact point, whether it
+  // came from a Nominatim place-name match or from directly-typed "lat, lng".
+  const applySelectedLocation = useCallback((lat, lng, label) => {
+    setSelectedPoint({ lat, lng, label, timestamp: new Date() });
+    setSearchResults([]);
+    setSearchError(null);
+
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView([lat, lng], 19);
+    }
+  }, []);
+
+  /* ===========================================
+     LOCATION SEARCH: query OpenStreetMap's free Nominatim geocoder for place
+     names — but a directly-typed "lat, lng" pair (e.g. "21.0964, 79.1095")
+     jumps straight there instead, since Nominatim's free-text search doesn't
+     reliably treat raw numbers as coordinates (it can match an unrelated
+     real place whose name happens to look like the input). Debounced while
+     typing; Enter key searches immediately.
+     =========================================== */
+  const searchLocation = useCallback(async (query) => {
+    const trimmed = query.trim();
+
+    const coordMatch = trimmed.match(/^(-?\d{1,3}(?:\.\d+)?)\s*[,\s]\s*(-?\d{1,3}(?:\.\d+)?)$/);
+    if (coordMatch) {
+      let lat = parseFloat(coordMatch[1]);
+      let lng = parseFloat(coordMatch[2]);
+      // Expected order is "lat, lng" (same order the app itself displays
+      // coordinates in). If the first number can't possibly be a latitude
+      // (>90°) but the second one can, it was likely typed as "lng, lat"
+      // instead — swap rather than reject.
+      if (Math.abs(lat) > 90 && Math.abs(lng) <= 90) {
+        [lat, lng] = [lng, lat];
+      }
+      if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+        if (searchAbortRef.current) searchAbortRef.current.abort();
+        setSearchLoading(false);
+        applySelectedLocation(lat, lng, `Coordinates: ${lat.toFixed(6)}°, ${lng.toFixed(6)}°`);
+        return;
+      }
+    }
+
+    if (trimmed.length < 3) {
+      setSearchResults([]);
+      setSearchError(null);
+      return;
+    }
+
+    if (searchAbortRef.current) {
+      searchAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
+    setSearchLoading(true);
+    setSearchError(null);
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(trimmed)}`,
+        { signal: controller.signal }
+      );
+      if (!response.ok) throw new Error('Search request failed');
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error('Location search failed:', err);
+      setSearchError('Unable to search right now. Please try again.');
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [applySelectedLocation]);
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      if (searchAbortRef.current) searchAbortRef.current.abort();
+    };
+  }, []);
+
+  const handleSearchInputChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => searchLocation(value), 500);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      searchLocation(searchQuery);
+    }
+  };
+
+  const handleClearSearch = () => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchError(null);
+  };
+
+  const handleSelectSearchResult = (result) => {
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+
+    setSearchQuery(result.display_name);
+    applySelectedLocation(lat, lng, result.display_name);
+  };
+
+  // Drop back to showing the live GPS position in the Current Coordinates card
+  const handleUseLiveGps = () => {
+    setSelectedPoint(null);
+  };
+
+  /* ===========================================
+     KMZ/KML IMPORT: plot an existing KMZ/KML file (property boundaries,
+     road alignments, etc.) on the map as a read-only reference layer,
+     separate from the surveyor's own drawn polygons in drawnItemsRef.
+     =========================================== */
+  const removeKmzLayer = useCallback(() => {
+    if (kmzLayerRef.current && mapInstanceRef.current) {
+      mapInstanceRef.current.removeLayer(kmzLayerRef.current);
+    }
+    kmzLayerRef.current = null;
+  }, []);
+
+  const handleClearKmz = () => {
+    removeKmzLayer();
+    setKmzFileName(null);
+    setKmzError(null);
+  };
+
+  const plotKmzGeoJSON = useCallback((geojson, fileLabel) => {
+    if (!mapInstanceRef.current) return;
+    removeKmzLayer();
+
+    const layer = L.geoJSON(geojson, {
+      style: (feature) => {
+        const props = feature.properties || {};
+        return {
+          color: props.stroke || '#a21caf',
+          weight: props['stroke-width'] || 3,
+          opacity: props['stroke-opacity'] ?? 1,
+          fillColor: props.fill || '#a21caf',
+          fillOpacity: props['fill-opacity'] ?? 0.15,
+        };
+      },
+      pointToLayer: (feature, latlng) =>
+        L.circleMarker(latlng, {
+          radius: 6,
+          color: '#a21caf',
+          weight: 2,
+          fillColor: '#a21caf',
+          fillOpacity: 0.85,
+        }),
+      onEachFeature: (feature, layer) => {
+        const name = feature.properties?.name;
+        const description = feature.properties?.description;
+        if (name || description) {
+          layer.bindPopup(
+            `<strong>${name || 'Feature'}</strong>${description ? `<br>${description}` : ''}`
+          );
+        }
+      },
+    });
+
+    if (layer.getLayers().length === 0) {
+      setKmzError('No plottable features were found in this file.');
+      return;
+    }
+
+    layer.addTo(mapInstanceRef.current);
+    kmzLayerRef.current = layer;
+    setKmzFileName(fileLabel);
+
+    const bounds = layer.getBounds();
+    if (bounds.isValid()) {
+      mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40] });
+    }
+  }, [removeKmzLayer]);
+
+  const handleKmzFileSelected = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = ''; // allow re-selecting the same file again later
+    if (!file) return;
+
+    setKmzError(null);
+    setKmzLoading(true);
+
+    try {
+      const lowerName = file.name.toLowerCase();
+      let kmlText;
+
+      if (lowerName.endsWith('.kmz')) {
+        const zip = await JSZip.loadAsync(file);
+        const kmlEntry = Object.values(zip.files).find(
+          (entry) => !entry.dir && entry.name.toLowerCase().endsWith('.kml')
+        );
+        if (!kmlEntry) throw new Error('No .kml file found inside this KMZ archive.');
+        kmlText = await kmlEntry.async('text');
+      } else if (lowerName.endsWith('.kml')) {
+        kmlText = await file.text();
+      } else {
+        throw new Error('Please choose a .kmz or .kml file.');
+      }
+
+      const kmlDom = new DOMParser().parseFromString(kmlText, 'text/xml');
+      if (kmlDom.querySelector('parsererror')) {
+        throw new Error('This file is not valid KML.');
+      }
+
+      const geojson = kmlToGeoJSON(kmlDom);
+      plotKmzGeoJSON(geojson, file.name);
+    } catch (err) {
+      console.error('KMZ import failed:', err);
+      setKmzError(err.message || 'Could not read this file.');
+    } finally {
+      setKmzLoading(false);
+    }
+  };
 
   /* ===========================================
      DYNAMIC: fetch live GPS on mount. If it fails or times out,
@@ -208,28 +496,34 @@ export default function MapComponent() {
     setLoading(true);
 
     // Safety net: if GPS doesn't respond in time, use fallback so the
-    // app doesn't get stuck on the loading screen.
+    // app doesn't get stuck on the loading screen. Longer than the two
+    // internal geolocation attempts combined (8s + 10s) so they get a
+    // fair chance to resolve first.
     const fallbackTimer = setTimeout(() => {
       setLocation((prev) => {
         if (prev) return prev; // GPS already succeeded, ignore fallback
+        setGeoErrorReason('Getting your location took too long.');
         setUsingFallbackLocation(true);
         setLoading(false);
         setError(null);
         return FALLBACK_LOCATION;
       });
-    }, 12000);
+    }, 20000);
 
     fetchAccurateLocation(
       (newLocation) => {
         clearTimeout(fallbackTimer);
         setUsingFallbackLocation(false);
+        setGeoErrorReason(null);
         setLocation(newLocation);
         setLoading(false);
         setError(null);
       },
-      (errorMessage) => {
+      (geoError) => {
         clearTimeout(fallbackTimer);
-        console.warn('Live GPS unavailable, using fallback location:', errorMessage);
+        const reason = describeGeoError(geoError);
+        console.warn('Live GPS unavailable, using fallback location:', reason, geoError);
+        setGeoErrorReason(reason);
         setUsingFallbackLocation(true);
         setLocation(FALLBACK_LOCATION);
         setLoading(false);
@@ -340,8 +634,60 @@ L.tileLayer(
 });
 
       // --- NAYA CODE (LEAFLET-DRAW) KHATAM ---
+
+      // Track whether leaflet-draw is mid-drawing/editing so a plain map
+      // click (used to drop a coordinate pin below) doesn't fire while the
+      // user is placing polygon/line vertices.
+      map.on(L.Draw.Event.DRAWSTART, () => { isDrawingRef.current = true; });
+      map.on(L.Draw.Event.DRAWSTOP, () => { isDrawingRef.current = false; });
+      map.on(L.Draw.Event.EDITSTART, () => { isDrawingRef.current = true; });
+      map.on(L.Draw.Event.EDITSTOP, () => { isDrawingRef.current = false; });
+      map.on(L.Draw.Event.DELETESTART, () => { isDrawingRef.current = true; });
+      map.on(L.Draw.Event.DELETESTOP, () => { isDrawingRef.current = false; });
+
+      // Click-to-pin: clicking anywhere on the map shows that point's
+      // coordinates in the "Current Coordinates" card.
+      map.on('click', (e) => {
+        if (isDrawingRef.current) return;
+        const { lat, lng } = e.latlng;
+        setSelectedPoint({ lat, lng, label: null, timestamp: new Date() });
+      });
     }
   }, [location]); // Dependency waisa hi hai — map only init once because mapInstanceRef blocks re-creation
+
+  // Render/move the pin dropped by a map click or a search selection.
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (!selectedPoint) {
+      if (selectedMarkerRef.current) {
+        map.removeLayer(selectedMarkerRef.current);
+        selectedMarkerRef.current = null;
+      }
+      return;
+    }
+
+    const pos = [selectedPoint.lat, selectedPoint.lng];
+
+    if (!selectedMarkerRef.current) {
+      const pinIcon = L.divIcon({
+        className: 'leaflet-selected-pin',
+        html: '<span class="selected-pin-dot"></span>',
+        iconSize: [24, 32],
+        iconAnchor: [12, 30],
+      });
+      selectedMarkerRef.current = L.marker(pos, { icon: pinIcon }).addTo(map);
+    } else {
+      selectedMarkerRef.current.setLatLng(pos);
+    }
+
+    if (selectedPoint.label) {
+      selectedMarkerRef.current.bindPopup(selectedPoint.label).openPopup();
+    } else {
+      selectedMarkerRef.current.unbindPopup();
+    }
+  }, [selectedPoint, location]);
 
   // Update marker/circle when location (rarely) changes
   useEffect(() => {
@@ -366,6 +712,7 @@ L.tileLayer(
     fetchAccurateLocation(
       (newLocation) => {
         setUsingFallbackLocation(false);
+        setGeoErrorReason(null);
         setLocation(newLocation);
         setLoading(false);
         setError(null);
@@ -373,8 +720,11 @@ L.tileLayer(
           mapInstanceRef.current.setView([newLocation.lat, newLocation.lng], 19);
         }
       },
-      (errorMessage) => {
-        setError(errorMessage);
+      (geoError) => {
+        const reason = describeGeoError(geoError);
+        console.warn('Refresh location failed:', reason, geoError);
+        setGeoErrorReason(reason);
+        setError(reason);
         setLoading(false);
       }
     );
@@ -543,6 +893,14 @@ L.tileLayer(
       ? 'accuracy-good'
       : 'accuracy-poor';
 
+  // What the "Current Coordinates" card shows: a pinned point (from a map
+  // click or search result) takes priority over the live GPS fix.
+  const pointToShow = selectedPoint
+    ? { lat: selectedPoint.lat, lng: selectedPoint.lng, altitude: null, timestamp: selectedPoint.timestamp, label: selectedPoint.label }
+    : location
+    ? { lat: location.lat, lng: location.lng, altitude: location.altitude, timestamp: currentTime, label: null }
+    : null;
+
   return (
     <div className={`map-container${darkMode ? ' dark' : ''}`}>
       <div className="map-content">
@@ -607,8 +965,8 @@ L.tileLayer(
                   </button>
                 </div>
                 {usingFallbackLocation && (
-                  <p className="location-label" style={{ color: '#b45309', marginBottom: '8px' }}>
-                    ⚠ Live GPS unavailable — showing fallback location. Tap Refresh to retry.
+                  <p className="gps-warning-banner">
+                    ⚠ Live GPS unavailable{geoErrorReason ? ` — ${geoErrorReason}` : ''} Showing fallback location. Tap Refresh to retry.
                   </p>
                 )}
                 <div className="location-grid">
@@ -627,21 +985,34 @@ L.tileLayer(
                 </div>
 
                 <div className="coord-card">
-                  <p className="coord-title">Current Coordinates</p>
+                  <div className="coord-card-header">
+                    <p className="coord-title">Current Coordinates</p>
+                    <span className={`coord-source-chip ${selectedPoint ? 'pinned' : 'live'}`}>
+                      {selectedPoint ? 'Pinned Location' : 'Live GPS'}
+                    </span>
+                  </div>
+                  {pointToShow.label && (
+                    <p className="coord-address" title={pointToShow.label}>{pointToShow.label}</p>
+                  )}
                   <div className="coord-values">
                     <div>
                       <p className="location-label">Latitude</p>
-                      <p className="location-value">{location.lat.toFixed(6)}°</p>
+                      <p className="location-value">{pointToShow.lat.toFixed(6)}°</p>
                     </div>
                     <div>
                       <p className="location-label">Longitude</p>
-                      <p className="location-value">{location.lng.toFixed(6)}°</p>
+                      <p className="location-value">{pointToShow.lng.toFixed(6)}°</p>
                     </div>
                   </div>
                   <div className="meta-row">
-                    <span>Altitude: {location.altitude ? `${location.altitude.toFixed(1)}m` : 'N/A'}</span>
-                    <span>Timestamp:{currentTime.toLocaleTimeString('en-GB')}</span>
+                    <span>Altitude: {pointToShow.altitude ? `${pointToShow.altitude.toFixed(1)}m` : 'N/A'}</span>
+                    <span>Timestamp:{pointToShow.timestamp.toLocaleTimeString('en-GB')}</span>
                   </div>
+                  {selectedPoint && (
+                    <button type="button" className="use-live-gps-button" onClick={handleUseLiveGps}>
+                      <Crosshair size={12} /> Use Live GPS Location
+                    </button>
+                  )}
                 </div>
 
                 <div className="proceed-button-container">
@@ -668,7 +1039,40 @@ L.tileLayer(
                     <Download size={18} /> Export Polygon Data
                   </button>
 
-                  
+                  <input
+                    type="file"
+                    ref={kmzInputRef}
+                    accept=".kmz,.kml"
+                    onChange={handleKmzFileSelected}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => kmzInputRef.current?.click()}
+                    className="proceed-button secondary-action"
+                    disabled={kmzLoading}
+                  >
+                    <Upload size={18} /> {kmzLoading ? 'Importing KMZ…' : 'Import KMZ'}
+                  </button>
+
+                  {kmzFileName && (
+                    <div className="kmz-layer-chip">
+                      <MapPin size={14} />
+                      <span className="kmz-layer-chip-name" title={kmzFileName}>{kmzFileName}</span>
+                      <button
+                        type="button"
+                        onClick={handleClearKmz}
+                        className="kmz-layer-chip-remove"
+                        title="Remove KMZ layer"
+                        aria-label="Remove KMZ layer"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  )}
+                  {kmzError && <p className="kmz-error-text">{kmzError}</p>}
+
+
   {/* Construction Demo Button */}
   <button
     onClick={handleOpenConstructionDemo}
@@ -683,6 +1087,46 @@ L.tileLayer(
             )}
           </div>
           <div className="layout-right">
+            <div className="map-search-card fade-in-item">
+              <div className="map-search-input-wrap">
+                <Search size={16} className="map-search-icon" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={handleSearchInputChange}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder="Search a place, or enter 'lat, lng'…"
+                  className="map-search-input"
+                  aria-label="Search for a location, or enter latitude, longitude coordinates"
+                />
+                {searchLoading && <Loader size={14} className="map-search-spinner" />}
+                {!searchLoading && searchQuery && (
+                  <button
+                    type="button"
+                    className="map-search-clear"
+                    onClick={handleClearSearch}
+                    title="Clear search"
+                    aria-label="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              {searchError && <p className="map-search-error">{searchError}</p>}
+              {searchResults.length > 0 && (
+                <ul className="map-search-results">
+                  {searchResults.map((result) => (
+                    <li key={result.place_id}>
+                      <button type="button" onClick={() => handleSelectSearchResult(result)}>
+                        <MapPin size={14} className="map-search-result-icon" />
+                        <span>{result.display_name}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="map-search-hint">Tip: click the map for its coordinates, or type "lat, lng" above to jump there.</p>
+            </div>
             <div className="map-wrapper fade-in-item">
               <div className="map-chip-row">
                 {/* <button className="map-chip active">Satellite View</button> */}
