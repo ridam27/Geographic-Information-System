@@ -55,7 +55,25 @@ function Console() {
   const { isAdmin, allowedModules, getSsoLaunchUrl } = useAuth();
   const [activeId, setActiveId] = useState(() => {
     try {
-      const saved = localStorage.getItem("gis_active_module");
+      // 1. Check URL query params first (e.g. ?module=3d or ?port=3001)
+      const urlParams = new URLSearchParams(window.location.search);
+      const modParam = urlParams.get("module") || urlParams.get("app");
+      const portParam = urlParams.get("port");
+      if (modParam) {
+        const found = MODULES.find(
+          (m) => m.id === modParam || m.code?.toLowerCase() === modParam.toLowerCase()
+        );
+        if (found) return found.id;
+      }
+      if (portParam) {
+        const found = MODULES.find((m) => m.url.includes(`:${portParam}`));
+        if (found) return found.id;
+      }
+
+      // 2. Check localStorage for last opened module / port
+      const saved =
+        localStorage.getItem("gis_active_module") ||
+        localStorage.getItem("gis_last_port_module");
       if (saved && (saved === "admin" || MODULES.some((m) => m.id === saved))) {
         return saved;
       }
@@ -78,6 +96,11 @@ function Console() {
     try {
       if (id) {
         localStorage.setItem("gis_active_module", id);
+        localStorage.setItem("gis_last_port_module", id);
+        const mod = MODULES.find((m) => m.id === id);
+        if (mod?.url) {
+          localStorage.setItem("gis_last_port_url", mod.url);
+        }
       }
     } catch (e) {}
 
@@ -129,12 +152,26 @@ function Console() {
   }, []);
 
   useEffect(() => {
-    if (activeId !== null) {
-      if (activeId === "admin" && !isAdmin) {
+    let targetId = activeId;
+    if (!targetId) {
+      try {
+        const saved =
+          localStorage.getItem("gis_active_module") ||
+          localStorage.getItem("gis_last_port_module");
+        if (saved && (saved === "admin" || MODULES.some((m) => m.id === saved))) {
+          targetId = saved;
+        }
+      } catch (e) {}
+    }
+
+    if (targetId) {
+      if (targetId === "admin" && !isAdmin) {
         const fallback = allowedModules[0] || MODULES[0]?.id;
         handleSelectModule(fallback);
-      } else if (activeId !== "admin" && !isAdmin && allowedModules.length && !allowedModules.includes(activeId)) {
+      } else if (targetId !== "admin" && !isAdmin && allowedModules.length && !allowedModules.includes(targetId)) {
         handleSelectModule(allowedModules[0]);
+      } else {
+        handleSelectModule(targetId);
       }
       return;
     }
