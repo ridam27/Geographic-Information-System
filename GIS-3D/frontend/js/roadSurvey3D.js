@@ -68,39 +68,43 @@ const ROAD_CAMERA_PIN_ICON = `data:image/svg+xml;utf8,${encodeURIComponent(`
 let isRoadKmzLoaded = false;
 
 async function loadKmzFileToKmlDataSource(fileUrl) {
-  try {
-    let ds;
+  const candidateUrls = [fileUrl, decodeURI(fileUrl), encodeURI(fileUrl)];
+  const uniqueUrls = [...new Set(candidateUrls)];
+
+  for (const url of uniqueUrls) {
     try {
-      ds = await Cesium.KmlDataSource.load(fileUrl, {
+      if (window.JSZip) {
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const zip = await JSZip.loadAsync(blob);
+          const kmlFileName = Object.keys(zip.files).find(n => n.toLowerCase().endsWith('.kml')) || 'doc.kml';
+          if (zip.files[kmlFileName]) {
+            const kmlText = await zip.files[kmlFileName].async('string');
+            const kmlBlob = new Blob([kmlText], { type: 'application/vnd.google-earth.kml+xml' });
+            const blobUrl = URL.createObjectURL(kmlBlob);
+            const ds = await Cesium.KmlDataSource.load(blobUrl, {
+              camera: viewer.scene.camera,
+              canvas: viewer.scene.canvas,
+              clampToGround: true
+            });
+            URL.revokeObjectURL(blobUrl);
+            if (ds && ds.entities.values.length > 0) return ds;
+          }
+        }
+      }
+    } catch (zipErr) {}
+
+    try {
+      const ds = await Cesium.KmlDataSource.load(url, {
         camera: viewer.scene.camera,
         canvas: viewer.scene.canvas,
         clampToGround: true
       });
-    } catch (directErr) {
-      console.log(`Direct load failed for ${fileUrl}, trying JSZip fallback...`);
-      if (window.JSZip) {
-        const resp = await fetch(fileUrl);
-        const blob = await resp.blob();
-        const zip = await JSZip.loadAsync(blob);
-        const kmlFileName = Object.keys(zip.files).find(n => n.toLowerCase().endsWith('.kml')) || 'doc.kml';
-        if (zip.files[kmlFileName]) {
-          const kmlText = await zip.files[kmlFileName].async('string');
-          const kmlBlob = new Blob([kmlText], { type: 'application/vnd.google-earth.kml+xml' });
-          const blobUrl = URL.createObjectURL(kmlBlob);
-          ds = await Cesium.KmlDataSource.load(blobUrl, {
-            camera: viewer.scene.camera,
-            canvas: viewer.scene.canvas,
-            clampToGround: true
-          });
-          URL.revokeObjectURL(blobUrl);
-        }
-      }
-    }
-    return ds;
-  } catch (err) {
-    console.warn(`Error loading KMZ ${fileUrl}:`, err);
-    return null;
+      if (ds && ds.entities.values.length > 0) return ds;
+    } catch (directErr) {}
   }
+  return null;
 }
 
 async function loadStaticRoadKMZ() {
@@ -112,7 +116,7 @@ async function loadStaticRoadKMZ() {
 
   isRoadKmzLoaded = true;
   const ds = ensureRoadsDataSource();
-  const kmzFiles = ["roads.kmz", "paths.kmz", encodeURI("Manish Nagar Roads.kmz")];
+  const kmzFiles = ["roads.kmz", "paths.kmz", "Manish Nagar Roads.kmz"];
 
   // How far above real ground the road overlay is lifted so the 3D model
   // (a raised photogrammetry/GLB mesh, not actual terrain) can never draw

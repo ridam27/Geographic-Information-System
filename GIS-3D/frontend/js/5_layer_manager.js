@@ -313,7 +313,19 @@ function getCustomHouseData(idOrEntity) {
   // Fallback: Generate complete, realistic municipal record for this house ID
   const generatedRecord = generateMunicipalPropertyRecord(id);
   if (!window.ptaxDatabase) window.ptaxDatabase = {};
+
+  const rawClean = String(id).trim();
   window.ptaxDatabase[id] = generatedRecord;
+  window.ptaxDatabase[rawClean] = generatedRecord;
+
+  const numOnly = rawClean.replace(/\D/g, "");
+  if (numOnly) {
+    window.ptaxDatabase[`MN${numOnly}`] = generatedRecord;
+    window.ptaxDatabase[`MN-${numOnly}`] = generatedRecord;
+    window.ptaxDatabase[`MN ${numOnly}`] = generatedRecord;
+    window.ptaxDatabase[`H${numOnly}`] = generatedRecord;
+    window.ptaxDatabase[`H-${numOnly}`] = generatedRecord;
+  }
   if (generatedRecord["Property Number"]) {
     window.ptaxDatabase[generatedRecord["Property Number"]] = generatedRecord;
   }
@@ -454,48 +466,65 @@ const API_BASE =
   }
 }
 
-// Helper to load KMZ file with JSZip fallback
+// Helper to load KMZ file with JSZip fallback and multiple URL candidates
 async function loadKmzFileToKmlDataSource(fileUrl) {
-  try {
-    let ds;
+  const candidateUrls = [fileUrl, decodeURI(fileUrl), encodeURI(fileUrl)];
+  const uniqueUrls = [...new Set(candidateUrls)];
+
+  for (const url of uniqueUrls) {
+    // Attempt JSZip uncompression first (standard for KMZ archives)
     try {
-      ds = await Cesium.KmlDataSource.load(fileUrl, {
+      if (window.JSZip) {
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const zip = await JSZip.loadAsync(blob);
+          const kmlFileName =
+            Object.keys(zip.files).find((n) =>
+              n.toLowerCase().endsWith(".kml")
+            ) || "doc.kml";
+          if (zip.files[kmlFileName]) {
+            const kmlText = await zip.files[kmlFileName].async("string");
+            const kmlBlob = new Blob([kmlText], {
+              type: "application/vnd.google-earth.kml+xml",
+            });
+            const blobUrl = URL.createObjectURL(kmlBlob);
+            const ds = await Cesium.KmlDataSource.load(blobUrl, {
+              camera: viewer.scene.camera,
+              canvas: viewer.scene.canvas,
+              clampToGround: true,
+            });
+            URL.revokeObjectURL(blobUrl);
+            if (ds && ds.entities.values.length > 0) {
+              return ds;
+            }
+          }
+        }
+      }
+    } catch (zipErr) {
+      // Ignore JSZip attempt error, try direct Cesium loader next
+    }
+
+    // Direct Cesium KmlDataSource fallback
+    try {
+      const ds = await Cesium.KmlDataSource.load(url, {
         camera: viewer.scene.camera,
         canvas: viewer.scene.canvas,
         clampToGround: true,
       });
-    } catch (directErr) {
-      if (window.JSZip) {
-        const resp = await fetch(fileUrl);
-        const blob = await resp.blob();
-        const zip = await JSZip.loadAsync(blob);
-        const kmlFileName =
-          Object.keys(zip.files).find((n) =>
-            n.toLowerCase().endsWith(".kml")
-          ) || "doc.kml";
-        if (zip.files[kmlFileName]) {
-          const kmlText = await zip.files[kmlFileName].async("string");
-          const kmlBlob = new Blob([kmlText], {
-            type: "application/vnd.google-earth.kml+xml",
-          });
-          const blobUrl = URL.createObjectURL(kmlBlob);
-          ds = await Cesium.KmlDataSource.load(blobUrl, {
-            camera: viewer.scene.camera,
-            canvas: viewer.scene.canvas,
-            clampToGround: true,
-          });
-          URL.revokeObjectURL(blobUrl);
-        }
+      if (ds && ds.entities.values.length > 0) {
+        return ds;
       }
+    } catch (directErr) {
+      // Try next candidate URL
     }
-    return ds;
-  } catch (err) {
-    console.warn(`Error loading KMZ ${fileUrl}:`, err);
-    return null;
   }
+
+  console.warn(`Could not load KMZ data from any URL candidate for: ${fileUrl}`);
+  return null;
 }
 
-// loadKMZLayers now loads both static HOUSES polygon.kmz and DB surveys in background
+// loadKMZLayers loads static HOUSES polygon.kmz, Manish Nagar Houses.kmz and DB surveys in background
 function loadKMZLayers() {
   const housesStatus = document.getElementById("housesStatus");
   if (housesStatus) {
@@ -515,13 +544,12 @@ function loadKMZLayers() {
         } catch (e) {}
       });
 
-      // Load every static houses KMZ that exists (each covers a different
-      // surveyed cluster, not duplicates) and merge them — same multi-file
-      // pattern as loadStaticRoadKMZ() in roadSurvey3D.js for roads.
+      // Load all static houses KMZs (including Manish Nagar Houses.kmz with all 125 house polygons)
       const houseKmzFiles = [
         "HOUSES polygon.kmz",
         "houses.kmz",
-        encodeURI("Manish Nagar Houses.kmz"),
+        "Manish Nagar Houses.kmz",
+        "My Places.kmz",
       ];
 
       for (const file of houseKmzFiles) {
@@ -638,6 +666,27 @@ function loadKMZLayers() {
               entity.polygon.outlineColor =
                 Cesium.Color.BLACK.withAlpha(0.85);
               entity.polygon.outlineWidth = 2.0;
+
+              // Attach floating 3D label above each house building block
+              const houseIdText = houseInfo
+                ? (houseInfo["Property Number"] || houseInfo.propertyNumber || entity.name || "")
+                : (entity.name || "");
+
+              if (houseIdText) {
+                entity.label = {
+                  text: String(houseIdText),
+                  font: "bold 12px 'Segoe UI', Roboto, sans-serif",
+                  fillColor: Cesium.Color.YELLOW,
+                  outlineColor: Cesium.Color.BLACK,
+                  outlineWidth: 3,
+                  style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                  heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+                  verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                  pixelOffset: new Cesium.Cartesian2(0, -10),
+                  eyeOffset: new Cesium.Cartesian3(0, 0, -5),
+                  distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 2000),
+                };
+              }
             }
           } catch (e) {}
         }

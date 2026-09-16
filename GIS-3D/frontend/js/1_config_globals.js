@@ -59,12 +59,12 @@ viewer.scene.globe.loadingDescendantLimit = 20;
 viewer.scene.globe.tileCacheSize = 100;
 viewer.resolutionScale = Math.min(window.devicePixelRatio || 1, 1.5);
 
-// Directly position camera to 3D terrain location immediately on startup
+// Directly position camera to Manish Nagar 3D houses location immediately on startup
 viewer.camera.setView({
-  destination: Cesium.Cartesian3.fromDegrees(79.09757, 21.10189, 1200),
+  destination: Cesium.Cartesian3.fromDegrees(79.09756, 21.10214, 550),
   orientation: {
     heading: Cesium.Math.toRadians(0),
-    pitch: Cesium.Math.toRadians(-30.0),
+    pitch: Cesium.Math.toRadians(-35.0),
     roll: 0.0,
   },
 });
