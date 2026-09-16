@@ -54,6 +54,20 @@ function showAddBannerButton(idOrEntity) {
     return;
   }
 
+  if (selectedHouseData) {
+    window.selectedPTAXProperty = selectedHouseData;
+    window.selectedHouseData = selectedHouseData;
+    window.selectedHouseId = selectedHouseId;
+  } else if (typeof getCustomHouseData === "function") {
+    const data = getCustomHouseData(selectedHouseId);
+    if (data) {
+      selectedHouseData = data;
+      window.selectedPTAXProperty = data;
+      window.selectedHouseData = data;
+      window.selectedHouseId = selectedHouseId;
+    }
+  }
+
   renderSelectedHouseData(selectedHouseId, selectedHouseData);
 
   const section = document.getElementById("bannerSection");
@@ -109,17 +123,18 @@ function renderSelectedHouseData(houseId, inputHouseData = null) {
     selectedHouseData ||
     (typeof getCustomHouseData === "function" ? getCustomHouseData(houseId) : null);
 
-  // If houseData is still missing or incomplete, generate full record
-  if (!houseData || !houseData["Name of the Property Owner"]) {
-    if (typeof generateMunicipalPropertyRecord === "function") {
-      houseData = generateMunicipalPropertyRecord(houseId);
-    }
+  if (houseData) {
+    window.selectedPTAXProperty = houseData;
+    window.selectedHouseData = houseData;
+    selectedHouseData = houseData;
   }
 
   const safeId =
     pickValue(houseData, ["Property Number", "propertyNumber", "propertyNo", "_id"]) ||
     houseId ||
     "MN-101";
+
+  window.selectedHouseId = safeId;
 
   const owner =
     pickValue(houseData, ["Name of the Property Owner", "ownerName", "name"]) ||

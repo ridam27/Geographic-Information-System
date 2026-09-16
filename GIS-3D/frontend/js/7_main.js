@@ -110,6 +110,14 @@ handler.setInputAction(function (click) {
       const propertyData =
         getCustomHouseData(clickedEntity);
 
+      window.selectedPTAXProperty = propertyData;
+      window.selectedHouseData = propertyData;
+      window.selectedHouseId =
+        (propertyData && (propertyData["Property Number"] || propertyData.propertyNumber || propertyData._id)) ||
+        clickedEntity.name ||
+        null;
+      window.currentSelectedEntity = clickedEntity;
+
       addPinAndFlyToEntity(
         clickedEntity,
         propertyData
