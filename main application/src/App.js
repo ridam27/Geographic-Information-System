@@ -114,8 +114,7 @@ function Console() {
     if (!permitted) return; // don't mount/pre-warm a module the user can't open
 
     setMountedIds((prev) => {
-      const without = prev.filter((existing) => existing !== id);
-      const next = [id, ...without];
+      const next = prev.includes(id) ? prev : [...prev, id];
 
       // Pinned modules (GIS-3D) never count against the cap and are never
       // evicted. Only secondary modules get LRU-capped, most-recent first.
