@@ -20,7 +20,6 @@ const NODE_PROJECTS = [
   'GIS-Viewer',
   'GIS-Viewer/backend',
   'GIS-Wild-life',
-  'GIS-Wild-life/backend',
   'iot-server',
   'main application',
   'main application/backend',

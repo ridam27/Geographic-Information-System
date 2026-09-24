@@ -6,7 +6,8 @@ import 'leaflet/dist/leaflet.css';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   DoorOpen, Compass, Flame, Footprints, Eye, Waves, TreePine,
-  Ticket, Car, Coffee, HeartPulse, Info, MapPin, Navigation, Sparkles, Bus, Globe, ArrowLeft
+  Ticket, Car, Coffee, HeartPulse, Info, MapPin, Navigation, Sparkles, Bus, Globe, ArrowLeft,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { TigerIcon, LeopardIcon, BearIcon, DeerIcon } from './AnimalIcons';
 
@@ -615,66 +616,28 @@ const MapView = ({
     });
   }, [onBackToCombinedMap]);
 
+  const quickBarScrollRef = useRef(null);
+
+  const handleQuickBarScrollLeft = useCallback((e) => {
+    if (e) e.stopPropagation();
+    if (quickBarScrollRef.current) {
+      quickBarScrollRef.current.scrollBy({ left: -180, behavior: 'smooth' });
+    }
+  }, []);
+
+  const handleQuickBarScrollRight = useCallback((e) => {
+    if (e) e.stopPropagation();
+    if (quickBarScrollRef.current) {
+      quickBarScrollRef.current.scrollBy({ left: 180, behavior: 'smooth' });
+    }
+  }, []);
+
   const activeTileUrl = getTileLayerUrl(mapType, showStreetLabels);
   const isDetailedZooMode = activeZooId !== null && activeZoo !== null;
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {/* Top Interactive Zone Quick Bar - Appears ONLY when inside a detailed zoo */}
-      {isDetailedZooMode && activeLocations.length > 0 && (
-        <div 
-          className="zone-quick-bar glass-panel animate-fade-in" 
-          role="toolbar" 
-          aria-label="Zone Quick Explorer"
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <button 
-            type="button"
-            className="zone-back-btn" 
-            onClick={(e) => {
-              e.stopPropagation();
-              handleBackToCombinedMapDirect();
-            }}
-            title="Return to Combined Map"
-          >
-            <ArrowLeft size={14} />
-            <span>All Zoos</span>
-          </button>
-          <div className="quick-bar-divider" />
-          <div className="quick-bar-label">
-            <Navigation size={14} style={{ color: activeZoo?.themeColor || '#10b981' }} />
-            <span>{activeZoo?.shortName || "Zoo"} Explorer:</span>
-          </div>
-          <div className="quick-bar-chips">
-            {activeLocations.map(loc => {
-              const isGorewadaVideo = activeZooId === 'gorewada' && (
-                loc.id.includes('safari') || loc.id.includes('tiger') || loc.id.includes('leopard') || loc.id.includes('bear')
-              );
 
-              return (
-                <button
-                  type="button"
-                  key={`quick-${loc.id}`}
-                  className={`zone-chip ${selectedLocation?.id === loc.id ? 'active' : ''} cat-${loc.category}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleZoneChipClick(loc);
-                  }}
-                  aria-label={`Explore zone: ${loc.name}`}
-                >
-                  <span className="chip-icon">{renderLocationIcon(loc.iconName, 13)}</span>
-                  <span>{loc.shortName}</span>
-                  {isGorewadaVideo && (
-                    <span className="chip-video-indicator">🎥 Video</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Floating Interactive Zoo Selector on Combined Overview Map */}
       {activeZooId === null && (

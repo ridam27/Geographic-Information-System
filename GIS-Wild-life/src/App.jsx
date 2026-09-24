@@ -269,6 +269,9 @@ function App() {
         activeZooId={activeZooId} 
         currentZoom={mapZoom}
         onBackToCombinedMap={handleBackToCombinedMap} 
+        activeLocations={activeLocations}
+        selectedLocation={selectedLocation}
+        onSelectLocation={handleSelectLocation}
       />
       
       <MapView 
