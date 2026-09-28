@@ -150,7 +150,7 @@ const server = app.listen(PORT, () => {
     console.log("        IoT SERVER STARTED");
     console.log("==========================================");
     console.log(
-        `[${timestamp()}] HTTP      : http://184.168.27.107:${PORT}`
+        `[${timestamp()}] HTTP      : http://184.168.127.107:${PORT}`
     );
     console.log(
         `[${timestamp()}] MQTT      : ${MQTT_URL}`
