@@ -49,7 +49,7 @@ const MODULES = [
     code: "ENV-04",
     name: "Environment",
     tagline: "Climate & ecological monitoring",
-    url: "https://geo-environment-frontend.onrender.com",
+    url: "http://localhost:3008",
     icon: "leaf",
   },
   {

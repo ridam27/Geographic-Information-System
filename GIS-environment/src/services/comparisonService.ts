@@ -1,4 +1,13 @@
-import { cities, type CityInfo } from '../mockData';
+import { fetchLiveWeather } from '../api/openMeteo';
+
+export interface CompareLocation {
+  id: string;
+  name: string;
+  state?: string;
+  country: string;
+  lat: number;
+  lng: number;
+}
 
 export interface ComparisonMetric {
   locationId: string;
@@ -14,22 +23,36 @@ export interface ComparisonMetric {
 
 export class ComparisonService {
   /**
-   * Compare multiple cities across core weather and AQI metrics
+   * Fetch live weather telemetry for a given location
    */
-  static compareLocations(locationIds: string[]): ComparisonMetric[] {
-    return locationIds
-      .map(id => cities.find(c => c.id === id))
-      .filter((c): c is CityInfo => c !== undefined)
-      .map(city => ({
-        locationId: city.id,
-        locationName: `${city.name}, ${city.country}`,
-        temp: city.baseTemp,
-        feelsLike: city.baseTemp + 1.5,
-        humidity: city.baseHumidity,
-        pressure: city.basePressure,
-        windSpeed: city.baseWindSpeed,
-        rainfall: 1.2,
+  static async fetchWeatherForLocation(loc: CompareLocation): Promise<ComparisonMetric> {
+    try {
+      const data = await fetchLiveWeather({ lat: loc.lat, lng: loc.lng });
+      return {
+        locationId: loc.id,
+        locationName: `${loc.name}${loc.country ? ', ' + loc.country : ''}`,
+        temp: Math.round(data.current.temperature2m),
+        feelsLike: Math.round(data.current.apparentTemperature),
+        humidity: Math.round(data.current.relativeHumidity2m),
+        pressure: Math.round(data.current.pressureMsl),
+        windSpeed: Math.round(data.current.windSpeed10m),
+        rainfall: parseFloat((data.current.precipitation || 0).toFixed(1)),
+        aqi: data.extended?.airQuality.aqi ?? 45,
+      };
+    } catch (err) {
+      console.error(`Failed to fetch weather for ${loc.name}:`, err);
+      // Fallback baseline in case API is offline
+      return {
+        locationId: loc.id,
+        locationName: `${loc.name}${loc.country ? ', ' + loc.country : ''}`,
+        temp: 25,
+        feelsLike: 26,
+        humidity: 60,
+        pressure: 1012,
+        windSpeed: 12,
+        rainfall: 0.0,
         aqi: 45,
-      }));
+      };
+    }
   }
 }

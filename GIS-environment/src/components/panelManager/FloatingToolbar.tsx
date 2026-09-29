@@ -51,10 +51,10 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
 
       <div className="w-full h-px bg-slate-800/80 my-0.5" />
 
-      {/* 4. AI Weather Copilot Button */}
+      {/* 4. Geolith AI Button */}
       <ToolbarButton
         id="copilot"
-        label="AI Weather Copilot"
+        label="Geolith AI"
         icon={<Bot className="w-5 h-5 text-purple-400" />}
         active={false}
         onClick={onOpenCopilot}

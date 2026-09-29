@@ -28,10 +28,8 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
   const workspaceItems = [
     { id: 'layers', label: 'Weather Layers Catalog', icon: Layers, color: 'text-sky-400' },
     { id: 'basemap', label: 'Basemap & Satellite', icon: Map, color: 'text-emerald-400' },
-    { id: 'industry', label: 'Enterprise Solutions', icon: Briefcase, color: 'text-indigo-400' },
     { id: 'environmental', label: 'Environmental Telemetry', icon: Trees, color: 'text-teal-400' },
-    { id: 'devPortal', label: 'Developer SDK & Cloud', icon: Code2, color: 'text-purple-400' },
-    { id: 'copilot', label: 'AI Weather Copilot', icon: Bot, color: 'text-amber-400' },
+    { id: 'copilot', label: 'GeoLith AI Earth Services', icon: Bot, color: 'text-amber-400' },
     { id: 'verification', label: 'Accuracy Verification', icon: Target, color: 'text-red-400' },
     { id: 'bookmarks', label: 'Saved Places & Bookmarks', icon: Bookmark, color: 'text-yellow-400' },
   ];

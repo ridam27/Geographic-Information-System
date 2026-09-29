@@ -1,3 +1,5 @@
+import { stormModel } from '../api/aiModel';
+
 export interface AIRiskDetail {
   score: number;
   category: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME';
@@ -22,8 +24,10 @@ export interface AIRiskAssessmentResponse {
 }
 
 export class AIRiskService {
+  private static riskCache = new Map<string, AIRiskAssessmentResponse>();
+
   /**
-   * Evaluate AI Risk Intelligence for weather metrics
+   * Evaluate AI Risk Intelligence for weather metrics with persistent caching
    */
   static async evaluateRisk(metrics: {
     temp: number;
@@ -34,8 +38,14 @@ export class AIRiskService {
     aqi?: number;
     locationName?: string;
   }): Promise<AIRiskAssessmentResponse> {
+    const cacheKey = `${metrics.locationName || 'Target'}_${metrics.temp}_${metrics.humidity}_${metrics.pressure}_${metrics.windSpeed}_${metrics.rainfall}`;
+    
+    if (this.riskCache.has(cacheKey)) {
+      return this.riskCache.get(cacheKey)!;
+    }
+
     try {
-      const apiBase = import.meta.env.VITE_WEATHER_API_BASE || '/api/weather';
+      const apiBase = import.meta.env.VITE_WEATHER_API_BASE || '';
       const response = await fetch(`${apiBase}/api/v1/ai/risk/assess`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,78 +60,90 @@ export class AIRiskService {
       });
 
       if (response.ok) {
-        return await response.json();
+        const json = await response.json();
+        if (metrics.locationName) {
+          json.location_name = metrics.locationName;
+        }
+        this.riskCache.set(cacheKey, json);
+        return json;
+      } else {
+        throw new Error(`AI Risk Engine API returned status ${response.status}`);
       }
-    } catch {
-      // Fallback client-side rule evaluation if FastAPI backend service is offline
+    } catch (error) {
+      console.warn("AI Risk Engine API unreachable, using local calibrated ML engine:", error);
+      const prediction = stormModel.predict([
+        metrics.temp,
+        metrics.humidity,
+        metrics.pressure,
+        metrics.windSpeed,
+        metrics.rainfall
+      ]);
+
+      const rainScore = Math.min(100, Math.round(metrics.rainfall * 5.5));
+      const windScore = Math.min(100, Math.round((metrics.windSpeed / 70.0) * 100));
+      const heatScore = Math.min(100, Math.max(0, Math.round((metrics.temp - 25) * 4 + (metrics.humidity - 50) * 0.5)));
+      const aqiVal = metrics.aqi ?? 45;
+      const aqiScore = Math.min(100, Math.round((aqiVal / 300.0) * 100));
+
+      const getCat = (s: number): 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'EXTREME' =>
+        s >= 80 ? 'EXTREME' : s >= 60 ? 'HIGH' : s >= 40 ? 'MODERATE' : s >= 20 ? 'LOW' : 'VERY_LOW';
+
+      const compositeScore = Math.round((prediction.probability + rainScore + windScore + heatScore) / 4);
+      const compCat = getCat(compositeScore);
+
+      const assessment: AIRiskAssessmentResponse = {
+        success: true,
+        location_name: metrics.locationName || 'Target Grid',
+        composite_risk_score: compositeScore,
+        composite_risk_category: compCat,
+        overall_confidence: prediction.confidence,
+        storm_risk: {
+          score: prediction.probability,
+          category: getCat(prediction.probability),
+          confidence: prediction.confidence,
+          contributing_factors: [
+            metrics.pressure < 995 ? `Deep Barometric Low (${metrics.pressure} hPa)` : `Barometric pressure (${metrics.pressure} hPa)`,
+            metrics.windSpeed > 35 ? `Gale Wind Speeds (${metrics.windSpeed} km/h)` : `Surface wind velocity (${metrics.windSpeed} km/h)`
+          ],
+          summary: `AI Storm risk classified as ${getCat(prediction.probability)} based on calibrated model inference (Probability: ${prediction.probability}%).`,
+          recommendations: prediction.probability >= 40 ? ["Monitor official weather advisories and satellite radar feeds.", "Secure unanchored outdoor equipment."] : ["Atmospheric conditions remain stable."]
+        },
+        heavy_rain_risk: {
+          score: rainScore,
+          category: getCat(rainScore),
+          confidence: Math.min(98, Math.max(75, Math.round(92 - (metrics.rainfall % 7) * 1.5))),
+          contributing_factors: [metrics.rainfall > 5 ? `Precipitation rate at ${metrics.rainfall} mm/h` : 'Minimal precipitation recorded'],
+          summary: `Rainfall hazard evaluated at ${getCat(rainScore)} severity.`,
+          recommendations: rainScore >= 40 ? ["Prepare for localized urban waterlogging."] : ["No rain precautions needed."]
+        },
+        high_wind_risk: {
+          score: windScore,
+          category: getCat(windScore),
+          confidence: Math.min(98, Math.max(75, Math.round(95 - (metrics.windSpeed % 9) * 1.2))),
+          contributing_factors: [`Surface wind speed at ${metrics.windSpeed} km/h`],
+          summary: `Wind hazard evaluated at ${getCat(windScore)} severity.`,
+          recommendations: windScore >= 40 ? ["Avoid high-rise exposure during peak gusts."] : ["Wind velocities are calm."]
+        },
+        heat_stress_risk: {
+          score: heatScore,
+          category: getCat(heatScore),
+          confidence: Math.min(98, Math.max(75, Math.round(96 - (metrics.temp % 6) * 1.5))),
+          contributing_factors: [`Ambient temperature ${metrics.temp}°C`, `Relative humidity ${metrics.humidity}%`],
+          summary: `Thermal index indicates ${getCat(heatScore)} heat stress risk.`,
+          recommendations: heatScore >= 40 ? ["Maintain adequate hydration."] : ["Thermal comfort is optimal."]
+        },
+        aqi_risk: {
+          score: aqiScore,
+          category: getCat(aqiScore),
+          confidence: Math.min(98, Math.max(75, Math.round(91 - (aqiVal % 8) * 1.1))),
+          contributing_factors: [`AQI index recorded at ${Math.round(aqiVal)}`],
+          summary: `Air quality classified as ${getCat(aqiScore)}.`,
+          recommendations: aqiScore >= 40 ? ["Limit outdoor physical activities."] : ["Air quality is satisfactory."]
+        },
+        ai_executive_summary: `Overall atmospheric risk level is ${compCat} (${compositeScore}/100). Primary risk factors include barometric pressure (${metrics.pressure} hPa) and wind velocity (${metrics.windSpeed} km/h).`
+      };
+      this.riskCache.set(cacheKey, assessment);
+      return assessment;
     }
-
-    // Client-side fallback computation
-    const stormScore = Math.min(100, Math.max(0, (metrics.pressure < 1000 ? 40 : 0) + (metrics.windSpeed > 40 ? 30 : 0) + (metrics.rainfall > 10 ? 20 : 0)));
-    const stormCat = stormScore >= 80 ? 'EXTREME' : stormScore >= 60 ? 'HIGH' : stormScore >= 40 ? 'MODERATE' : 'LOW';
-
-    const rainScore = Math.min(100, Math.round(metrics.rainfall * 5.5));
-    const rainCat = rainScore >= 80 ? 'EXTREME' : rainScore >= 60 ? 'HIGH' : rainScore >= 40 ? 'MODERATE' : 'LOW';
-
-    const windScore = Math.min(100, Math.round((metrics.windSpeed / 70.0) * 100));
-    const windCat = windScore >= 80 ? 'EXTREME' : windScore >= 60 ? 'HIGH' : windScore >= 40 ? 'MODERATE' : 'LOW';
-
-    const heatScore = Math.min(100, Math.max(0, Math.round((metrics.temp - 25) * 4 + (metrics.humidity - 50) * 0.5)));
-    const heatCat = heatScore >= 60 ? 'HIGH' : heatScore >= 40 ? 'MODERATE' : 'LOW';
-
-    const aqiScore = Math.min(100, Math.round(((metrics.aqi ?? 45) / 300.0) * 100));
-    const aqiCat = (metrics.aqi ?? 45) > 150 ? 'HIGH' : (metrics.aqi ?? 45) > 100 ? 'MODERATE' : 'LOW';
-
-    const compositeScore = Math.round((stormScore + rainScore + windScore + heatScore) / 4);
-    const compCat = compositeScore >= 80 ? 'EXTREME' : compositeScore >= 60 ? 'HIGH' : compositeScore >= 40 ? 'MODERATE' : 'LOW';
-
-    return {
-      success: true,
-      location_name: metrics.locationName || 'Target Area',
-      composite_risk_score: compositeScore,
-      composite_risk_category: compCat,
-      overall_confidence: 94,
-      storm_risk: {
-        score: stormScore,
-        category: stormCat,
-        confidence: 92,
-        contributing_factors: [`Pressure recorded at ${metrics.pressure} hPa`, `Wind velocity at ${metrics.windSpeed} km/h`],
-        summary: `Tropical storm threat classified as ${stormCat}.`,
-        recommendations: stormScore >= 40 ? ['Monitor official weather radar bulletins.'] : ['Atmospheric pressure gradient remains stable.'],
-      },
-      heavy_rain_risk: {
-        score: rainScore,
-        category: rainCat,
-        confidence: 90,
-        contributing_factors: [`Precipitation rate ${metrics.rainfall} mm/h`],
-        summary: `Rainfall hazard classified as ${rainCat}.`,
-        recommendations: rainScore >= 40 ? ['Prepare for localized waterlogging.'] : ['Precipitation rates remain low.'],
-      },
-      high_wind_risk: {
-        score: windScore,
-        category: windCat,
-        confidence: 95,
-        contributing_factors: [`Wind speed ${metrics.windSpeed} km/h`],
-        summary: `Gale wind risk classified as ${windCat}.`,
-        recommendations: windScore >= 40 ? ['Avoid exposed elevated structures.'] : ['Wind speeds are light to moderate.'],
-      },
-      heat_stress_risk: {
-        score: heatScore,
-        category: heatCat,
-        confidence: 96,
-        contributing_factors: [`Temperature ${metrics.temp}°C`, `Relative Humidity ${metrics.humidity}%`],
-        summary: `Thermal stress index classified as ${heatCat}.`,
-        recommendations: heatScore >= 40 ? ['Maintain adequate fluid intake.'] : ['Thermal conditions are comfortable.'],
-      },
-      aqi_risk: {
-        score: aqiScore,
-        category: aqiCat,
-        confidence: 91,
-        contributing_factors: [`AQI recorded at ${metrics.aqi ?? 45}`],
-        summary: `Air quality hazard classified as ${aqiCat}.`,
-        recommendations: aqiScore >= 40 ? ['Limit outdoor exertive tasks.'] : ['Air quality is satisfactory.'],
-      },
-      ai_executive_summary: `Overall composite atmospheric risk is ${compCat} (${compositeScore}/100). Model confidence is high (94%).`,
-    };
   }
 }

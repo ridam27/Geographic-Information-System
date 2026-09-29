@@ -12,14 +12,7 @@ import {
   EyeOff,
   Layers,
   ChevronDown,
-  ChevronUp,
-  Activity,
-  Flame,
-  Globe,
-  Shield,
-  Waves,
-  TrendingUp,
-  AlertTriangle
+  ChevronUp
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -81,18 +74,6 @@ export default function LayerControls({
         { key: "humidity" as const, label: "Humidity Index", icon: Droplets, color: "text-cyan-400" },
         { key: "temperature" as const, label: "Temperature Map", icon: Thermometer, color: "text-orange-400" },
         { key: "lightning" as const, label: "Lightning Strikes", icon: Zap, color: "text-yellow-400 animate-pulse" },
-      ]
-    },
-    {
-      title: "Earth & Climate Overlays",
-      items: [
-        { key: "earthquake" as const, label: "Live Earthquakes", icon: Activity, color: "text-red-400" },
-        { key: "wildfire" as const, label: "Active Wildfires", icon: Flame, color: "text-amber-500" },
-        { key: "volcano" as const, label: "Volcanic Alerts", icon: Globe, color: "text-rose-400" },
-        { key: "airQuality" as const, label: "Air Quality Contours", icon: Shield, color: "text-emerald-400" },
-        { key: "oceanCurrents" as const, label: "Ocean Currents & SST", icon: Waves, color: "text-blue-500" },
-        { key: "climateAnomalies" as const, label: "Climate Anomalies", icon: TrendingUp, color: "text-pink-400" },
-        { key: "floodRisk" as const, label: "Flood Risk Index", icon: AlertTriangle, color: "text-orange-400" },
       ]
     },
     {

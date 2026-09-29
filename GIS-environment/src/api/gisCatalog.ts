@@ -49,8 +49,8 @@ export const GIS_CATALOG: GisGroup[] = [
       { id: "osm", name: "OpenStreetMap", sub: "openstreetmap standard", type: "xyz", url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png" },
       { id: "osm_hot", name: "OSM Humanitarian", sub: "HOT streets", type: "xyz", url: "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png" },
       { id: "cyclosm", name: "CyclOSM", sub: "terrain-aware cycling", type: "xyz", url: "https://a.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png" },
-      { id: "carto_dark", name: "Carto Dark", sub: "black backdrop", type: "xyz", url: "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" },
-      { id: "carto_light", name: "Carto Light", sub: "white backdrop", type: "xyz", url: "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png" },
+      { id: "carto_dark", name: "ESRI Dark Canvas", sub: "black backdrop", type: "xyz", url: ESRI + "Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}" },
+      { id: "carto_light", name: "ESRI Light Canvas", sub: "white backdrop", type: "xyz", url: ESRI + "Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}" },
     ]
   },
   {
@@ -99,7 +99,7 @@ export const GIS_CATALOG: GisGroup[] = [
     layers: [
       { id: "esri_bound", name: "ESRI Boundaries & Places", sub: "labels overlay", type: "xyz", url: ESRI + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", overlay: true },
       { id: "esri_trans", name: "ESRI Transportation", sub: "roads overlay", type: "xyz", url: ESRI + "Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", overlay: true },
-      { id: "carto_lbl", name: "Carto Labels Only", sub: "place labels", type: "xyz", url: "https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png", overlay: true },
+      { id: "carto_lbl", name: "ESRI Reference Labels", sub: "place labels", type: "xyz", url: ESRI + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", overlay: true },
       { id: "eox_overlay", name: "EOX Overlay (Bright)", sub: "borders & places", type: "wms", url: "https://tiles.maps.eox.at/wms", wmsLayer: "overlay_bright" },
     ]
   }

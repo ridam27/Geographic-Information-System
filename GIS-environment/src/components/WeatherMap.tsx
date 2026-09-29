@@ -18,6 +18,8 @@ import type { UploadedKml } from './GeoPortalPanel';
 import type { GisLayerDef } from '../api/gisCatalog';
 import { EarthServices } from '../services/earthServices';
 
+
+
 interface WeatherMapProps {
   timeOffset: number;
   layers: {
@@ -42,6 +44,7 @@ interface WeatherMapProps {
   waybackRel: string;
   uploadedKmls: UploadedKml[];
   measuring: boolean;
+  stormsUpdateKey?: number;
 }
 
 function createCirclePolygon(lat: number, lng: number, radiusKm: number, numPoints = 64) {
@@ -56,43 +59,11 @@ function createCirclePolygon(lat: number, lng: number, radiusKm: number, numPoin
 }
 
 function buildAllStormTracksGeoJSON(mode: 'present' | 'past' | 'future' = 'present', currentTimeOffset = 0) {
-  const features: any[] = [];
-  const list = mode === 'past' ? historicalStorms : (mode === 'future' ? futureStorms : presentStorms);
-  list.forEach(gs => {
-    const coords = gs.track.map(s => [s.position.lng, s.position.lat]);
-    features.push({
-      type: 'Feature',
-      properties: { stormId: gs.id, category: gs.category, probability: gs.probability },
-      geometry: { type: 'LineString', coordinates: coords },
-    });
-    gs.track.forEach(s => {
-      features.push({
-        type: 'Feature',
-        properties: { 
-          stormId: gs.id, 
-          category: gs.category, 
-          label: s.label, 
-          timeOffset: s.timeOffset,
-          expired: mode === 'past' && s.timeOffset < currentTimeOffset
-        },
-        geometry: { type: 'Point', coordinates: [s.position.lng, s.position.lat] },
-      });
-    });
-  });
-  return { type: 'FeatureCollection', features };
+  return { type: 'FeatureCollection', features: [] };
 }
 
 function buildAllHazardRingsGeoJSON(t: number, mode: 'present' | 'past' | 'future' = 'present') {
-  const features: any[] = [];
-  const stormStates = getAllStormsAtTime(t, mode);
-  stormStates.forEach(({ storm, state }) => {
-    const { lat, lng } = state.position;
-    features.push({ type: 'Feature', properties: { type: 'clouds',   stormId: storm.id, category: storm.category }, geometry: { type: 'Polygon', coordinates: createCirclePolygon(lat, lng, state.radius * 1.25) } });
-    features.push({ type: 'Feature', properties: { type: 'gale',     stormId: storm.id, category: storm.category }, geometry: { type: 'Polygon', coordinates: createCirclePolygon(lat, lng, state.radius * 0.8) } });
-    features.push({ type: 'Feature', properties: { type: 'storm',    stormId: storm.id, category: storm.category }, geometry: { type: 'Polygon', coordinates: createCirclePolygon(lat, lng, state.radius * 0.45) } });
-    features.push({ type: 'Feature', properties: { type: 'core',     stormId: storm.id, category: storm.category }, geometry: { type: 'Polygon', coordinates: createCirclePolygon(lat, lng, state.radius * 0.15) } });
-  });
-  return { type: 'FeatureCollection', features };
+  return { type: 'FeatureCollection', features: [] };
 }
 
 const cardinalToDegrees = (dir: string): number => {
@@ -121,13 +92,24 @@ interface GridPoint {
 
 export default function WeatherMap({
   timeOffset, layers, layerOpacities = {}, selectedLocationId, onSelectLocation, onMapClick, searchTrigger, selectedDate, activeTab, activeBasemap,
-  activeGisLayers, gibsDate, waybackRel, uploadedKmls, measuring,
+  activeGisLayers, gibsDate, waybackRel, uploadedKmls, measuring, stormsUpdateKey,
+  showMapillaryCoverage = false, onToggleMapillaryCoverage, onMapillaryImageSelect, mapillaryImages = [], mapillaryStatusMessage, mapillaryLoading = false,
+  onMapCenterChange
 }: WeatherMapProps) {
   void activeTab;
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef          = useRef<maplibregl.Map | null>(null);
   const canvasRef       = useRef<HTMLCanvasElement>(null);
   const heatmapCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  const mapillaryImagesRef = useRef(mapillaryImages);
+  mapillaryImagesRef.current = mapillaryImages;
+
+  const onMapillaryImageSelectRef = useRef(onMapillaryImageSelect);
+  onMapillaryImageSelectRef.current = onMapillaryImageSelect;
+
+  const onMapCenterChangeRef = useRef(onMapCenterChange);
+  onMapCenterChangeRef.current = onMapCenterChange;
 
   const [mapReady, setMapReady] = useState(false);
   const [webglSupported, setWebglSupported] = useState(true);
@@ -307,20 +289,17 @@ export default function WeatherMap({
             'carto-dark': {
               type: 'raster',
               tiles: [
-                'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+                'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
               ],
               tileSize: 256,
-              attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://openstreetmap.org">OSM</a>',
-              maxzoom: 15,
+              attribution: '&copy; Esri &copy; OpenStreetMap',
+              maxzoom: 18,
             },
           },
           layers: [{ id: 'carto-dark-layer', type: 'raster', source: 'carto-dark', minzoom: 0, maxzoom: 20 }],
         },
-        center: [78.9629, 20.5937],
-        zoom: 4.6,
+        center: [20, 15],
+        zoom: 2.2,
         maxZoom: 18,
         minZoom: 1.5,
         maxPitch: 85,
@@ -402,9 +381,9 @@ export default function WeatherMap({
 
       map.addSource('carto-labels', { 
         type: 'raster', 
-        tiles: ['https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png'], 
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'], 
         tileSize: 256,
-        maxzoom: 15,
+        maxzoom: 18,
       });
       map.addLayer({ id: 'labels-layer', type: 'raster', source: 'carto-labels', paint: { 'raster-opacity': 0.9 } });
 
@@ -496,7 +475,7 @@ export default function WeatherMap({
 
       map.addSource('india-borders-source', {
         type: 'geojson',
-        data: 'https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson'
+        data: { type: 'FeatureCollection', features: [] }
       });
       map.addLayer({
         id: 'india-borders-layer',
@@ -511,6 +490,16 @@ export default function WeatherMap({
           visibility: layers.borders ? 'visible' : 'none'
         }
       });
+
+      fetch('https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson')
+        .then((res) => res.json())
+        .then((geojson) => {
+          if (mapRef.current) {
+            const src = mapRef.current.getSource('india-borders-source') as maplibregl.GeoJSONSource;
+            if (src) src.setData(geojson);
+          }
+        })
+        .catch((err) => console.warn('Failed to fetch India borders GeoJSON:', err));
 
       // 1. Earthquakes Source & Layer
       const eqData = EarthServices.getLiveEarthquakes(selectedDate);
@@ -615,9 +604,15 @@ export default function WeatherMap({
     };
     map.on('move', updateDomMarkers);
 
+
+
     const onMoveEnd = () => {
       setMapMoveVersion(v => v + 1);
       updateGridPoints();
+      if (onMapCenterChangeRef.current && mapRef.current) {
+        const center = mapRef.current.getCenter();
+        onMapCenterChangeRef.current(center.lat, center.lng);
+      }
     };
     map.on('moveend', onMoveEnd);
     map.on('zoomend', onMoveEnd);
@@ -680,319 +675,344 @@ export default function WeatherMap({
 
     if (!measuring) {
       setMeasurePoints([]);
-      const src = map.getSource('measure-source') as maplibregl.GeoJSONSource;
-      if (src) {
-        src.setData({ type: 'FeatureCollection', features: [] });
-      }
+      try {
+        if (map.isStyleLoaded()) {
+          const src = map.getSource('measure-source') as maplibregl.GeoJSONSource;
+          if (src) {
+            src.setData({ type: 'FeatureCollection', features: [] });
+          }
+        }
+      } catch (e) {}
     }
   }, [measuring, mapReady]);
 
   // ── 2. Fly to search result ───────────────────────────────
   useEffect(() => {
     if (searchTrigger && mapRef.current) {
-      mapRef.current.flyTo({ center: [searchTrigger.lng, searchTrigger.lat], zoom: searchTrigger.zoom, essential: true, speed: 1.2 });
+      try {
+        mapRef.current.flyTo({ center: [searchTrigger.lng, searchTrigger.lat], zoom: searchTrigger.zoom, essential: true, speed: 1.2 });
+      } catch (e) {}
     }
   }, [searchTrigger]);
 
   // ── 3. Sync layer visibility toggles & update GeoJSON ──────
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map || !mapReady || !map.isStyleLoaded()) return;
 
-    // Sync active basemap visibility
-    const showEsriSat = activeBasemap === 'esri' || (layers.satellite && activeBasemap === 'dark');
-    const basemapLayers = {
-      'osm-layer': activeBasemap === 'osm',
-      'esri-sat-layer': showEsriSat,
-      'google-sat-layer': activeBasemap === 'google-sat',
-      'google-hyb-layer': activeBasemap === 'google-hyb',
-      'esri-topo-layer': activeBasemap === 'topo',
-      'esri-ocean-layer': activeBasemap === 'ocean',
-    };
+    try {
+      // Sync active basemap visibility
+      const showEsriSat = activeBasemap === 'esri' || (layers.satellite && activeBasemap === 'dark');
+      const basemapLayers = {
+        'osm-layer': activeBasemap === 'osm',
+        'esri-sat-layer': showEsriSat,
+        'google-sat-layer': activeBasemap === 'google-sat',
+        'google-hyb-layer': activeBasemap === 'google-hyb',
+        'esri-topo-layer': activeBasemap === 'topo',
+        'esri-ocean-layer': activeBasemap === 'ocean',
+      };
 
-    Object.entries(basemapLayers).forEach(([layerId, visible]) => {
-      if (map.getLayer(layerId)) {
-        map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
-      }
-    });
-
-    if (map.getLayer('labels-layer')) {
-      const showLabels = activeBasemap !== 'google-hyb';
-      map.setLayoutProperty('labels-layer', 'visibility', showLabels ? 'visible' : 'none');
-    }
-
-    if (map.getLayer('india-borders-layer')) map.setLayoutProperty('india-borders-layer', 'visibility', layers.borders ? 'visible' : 'none');
-
-    // Sync base map roads & labels visibility
-    const styleLayers = map.getStyle().layers;
-    if (styleLayers) {
-      styleLayers.forEach(lyr => {
-        const idLower = lyr.id.toLowerCase();
-        if (idLower.includes('road') || idLower.includes('highway') || idLower.includes('bridge') || idLower.includes('tunnel') || idLower.includes('rail')) {
-          map.setLayoutProperty(lyr.id, 'visibility', layers.roads ? 'visible' : 'none');
-        }
-        if (idLower.includes('label') || idLower.includes('place') || idLower.includes('poi') || idLower.includes('town') || idLower.includes('city')) {
-          if (lyr.id !== 'labels-layer') {
-            map.setLayoutProperty(lyr.id, 'visibility', layers.roads ? 'visible' : 'none');
-          }
+      Object.entries(basemapLayers).forEach(([layerId, visible]) => {
+        if (map.getLayer(layerId)) {
+          map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
         }
       });
-    }
 
-    if (map.getLayer('labels-layer')) {
-      map.setLayoutProperty('labels-layer', 'visibility', (layers.roads || layers.borders) ? 'visible' : 'none');
-      map.setPaintProperty('labels-layer', 'raster-opacity', layers.roads ? 0.9 : 0.4);
-    }
-
-    const trackSrc = map.getSource('storm-track-source') as maplibregl.GeoJSONSource;
-    if (trackSrc) trackSrc.setData(buildAllStormTracksGeoJSON(mode, timeOffset));
-
-    const trackColor = mode === 'past' ? '#f97316' : (mode === 'future' ? '#a855f7' : '#22c55e');
-
-    const showStorms = mode === 'present' || layers.storm;
-    if (map.getLayer('storm-track-line')) {
-      map.setLayoutProperty('storm-track-line',  'visibility', showStorms ? 'visible' : 'none');
-      map.setPaintProperty('storm-track-line', 'line-color', trackColor);
-    }
-    if (map.getLayer('storm-track-nodes')) {
-      map.setLayoutProperty('storm-track-nodes', 'visibility', showStorms ? 'visible' : 'none');
-      map.setPaintProperty('storm-track-nodes', 'circle-color', [
-        'case',
-        ['get', 'expired'],
-        '#64748b',
-        trackColor
-      ]);
-      map.setPaintProperty('storm-track-nodes', 'circle-stroke-color', [
-        'case',
-        ['get', 'expired'],
-        '#475569',
-        trackColor
-      ]);
-    }
-
-    const hazardSrc = map.getSource('storm-hazard-source') as maplibregl.GeoJSONSource;
-    if (hazardSrc) hazardSrc.setData(buildAllHazardRingsGeoJSON(timeOffset, mode));
-
-    const eqSrc = map.getSource('earthquake-source') as maplibregl.GeoJSONSource;
-    if (eqSrc) {
-      const eqData = EarthServices.getLiveEarthquakes(selectedDate);
-      eqSrc.setData({
-        type: 'FeatureCollection',
-        features: eqData.map(eq => ({
-          type: 'Feature',
-          properties: { mag: eq.magnitude, title: eq.place, depth: eq.depth },
-          geometry: { type: 'Point', coordinates: [eq.lng, eq.lat] }
-        }))
-      });
-    }
-
-    const fireSrc = map.getSource('wildfire-source') as maplibregl.GeoJSONSource;
-    if (fireSrc) {
-      const fireData = EarthServices.getLiveWildfires(selectedDate);
-      fireSrc.setData({
-        type: 'FeatureCollection',
-        features: fireData.map(f => ({
-          type: 'Feature',
-          properties: { intensity: f.intensity },
-          geometry: { type: 'Point', coordinates: [f.lng, f.lat] }
-        }))
-      });
-    }
-
-    const tog = (id: string, on: boolean) => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); };
-    tog('storm-hazard-gale',     layers.storm || layers.rain);
-    tog('storm-hazard-storm',    layers.storm || layers.wind);
-    tog('storm-hazard-eye-wall', layers.storm);
-    tog('storm-hazard-clouds',   layers.clouds);
-
-    tog('radar-tiles-layer', layers.rain);
-
-    tog('earthquake-layer', layers.earthquake);
-    if (map.getLayer('earthquake-layer')) {
-      map.setPaintProperty('earthquake-layer', 'circle-opacity', (layerOpacities.earthquake ?? 0.85) * 0.95);
-    }
-    tog('wildfire-layer', layers.wildfire);
-    if (map.getLayer('wildfire-layer')) {
-      map.setPaintProperty('wildfire-layer', 'circle-opacity', (layerOpacities.wildfire ?? 0.9) * 0.95);
-    }
-    tog('volcano-layer', layers.volcano);
-    if (map.getLayer('volcano-layer')) {
-      map.setPaintProperty('volcano-layer', 'circle-opacity', (layerOpacities.volcano ?? 0.9) * 0.95);
-    }
-
-    // Sync 3D Terrain
-    if (layers.terrain) {
-      if (!map.getTerrain()) {
-        map.setTerrain({ source: 'terrain-rgb', exaggeration: 1.5 });
-        map.easeTo({ pitch: 45, duration: 1000 });
+      if (map.getLayer('labels-layer')) {
+        const showLabels = activeBasemap !== 'google-hyb';
+        map.setLayoutProperty('labels-layer', 'visibility', showLabels ? 'visible' : 'none');
       }
-    } else {
-      if (map.getTerrain()) {
-        map.setTerrain(null);
-        map.easeTo({ pitch: 0, duration: 1000 });
-      }
-    }
 
-    // Sync active WMS/XYZ/GIBS/Wayback layers
-    const style = map.getStyle();
-    if (style && style.layers) {
-      style.layers.forEach((layer) => {
-        if (layer.id.startsWith('gis-layer-')) {
-          const originalId = layer.id.replace('gis-layer-', '');
-          const activeL = activeGisLayers[originalId];
-          if (!activeL || !activeL.visible) {
-            map.setLayoutProperty(layer.id, 'visibility', 'none');
-          }
+      if (map.getLayer('india-borders-layer')) map.setLayoutProperty('india-borders-layer', 'visibility', layers.borders ? 'visible' : 'none');
+
+      // Sync base map roads & labels visibility
+      try {
+        const style = map.getStyle();
+        const styleLayers = style ? style.layers : undefined;
+        if (styleLayers) {
+          styleLayers.forEach(lyr => {
+            const idLower = lyr.id.toLowerCase();
+            if (idLower.includes('road') || idLower.includes('highway') || idLower.includes('bridge') || idLower.includes('tunnel') || idLower.includes('rail')) {
+              map.setLayoutProperty(lyr.id, 'visibility', layers.roads ? 'visible' : 'none');
+            }
+            if (idLower.includes('label') || idLower.includes('place') || idLower.includes('poi') || idLower.includes('town') || idLower.includes('city')) {
+              if (lyr.id !== 'labels-layer') {
+                map.setLayoutProperty(lyr.id, 'visibility', layers.roads ? 'visible' : 'none');
+              }
+            }
+          });
         }
-      });
-    }
+      } catch (e) {
+        // ignore transient style loading error
+      }
 
-    Object.entries(activeGisLayers).forEach(([id, l]) => {
-      const gisLyrId = `gis-layer-${id}`;
-      const srcId = `gis-src-${id}`;
+      if (map.getLayer('labels-layer')) {
+        map.setLayoutProperty('labels-layer', 'visibility', (layers.roads || layers.borders) ? 'visible' : 'none');
+        map.setPaintProperty('labels-layer', 'raster-opacity', layers.roads ? 0.9 : 0.4);
+      }
 
-      if (l.visible) {
-        if (!map.getLayer(gisLyrId)) {
-          let urlTemplate = '';
-          if (l.type === 'xyz' && l.url) {
-            urlTemplate = l.url;
-          } else if (l.type === 'wms' && l.url && l.wmsLayer) {
-            urlTemplate = `${l.url}?service=WMS&version=1.1.1&request=GetMap&layers=${l.wmsLayer}&styles=&format=image/png&transparent=true&width=256&height=256&srs=EPSG:3857&bbox={bbox-epsg-3857}`;
-          } else if (l.type === 'gibs' && l.gibsId && l.gibsMatrix && l.gibsExt) {
-            urlTemplate = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${l.gibsId}/default/${gibsDate}/${l.gibsMatrix}/{z}/{y}/{x}.${l.gibsExt}`;
-          } else if (l.type === 'wayback') {
-            urlTemplate = `https://wayback.maptiles.arcgis.com/arcgis/rest/services/world_imagery/wmts/1.0.0/default028mm/mapserver/tile/${waybackRel || '0'}/{z}/{y}/{x}`;
-          }
+      const trackSrc = map.getSource('storm-track-source') as maplibregl.GeoJSONSource;
+      if (trackSrc) trackSrc.setData(buildAllStormTracksGeoJSON(mode, timeOffset));
 
-          if (urlTemplate) {
-            map.addSource(srcId, {
-              type: 'raster',
-              tiles: [urlTemplate],
-              tileSize: 256,
-            });
-            map.addLayer({
-              id: gisLyrId,
-              type: 'raster',
-              source: srcId,
-              layout: { visibility: 'visible' },
-              paint: { 'raster-opacity': l.opacity }
-            });
+      const trackColor = mode === 'past' ? '#f97316' : (mode === 'future' ? '#a855f7' : '#22c55e');
+
+      const showStorms = mode === 'present' || layers.storm;
+      if (map.getLayer('storm-track-line')) {
+        map.setLayoutProperty('storm-track-line',  'visibility', showStorms ? 'visible' : 'none');
+        map.setPaintProperty('storm-track-line', 'line-color', trackColor);
+      }
+      if (map.getLayer('storm-track-nodes')) {
+        map.setLayoutProperty('storm-track-nodes', 'visibility', showStorms ? 'visible' : 'none');
+        map.setPaintProperty('storm-track-nodes', 'circle-color', [
+          'case',
+          ['get', 'expired'],
+          '#64748b',
+          trackColor
+        ]);
+        map.setPaintProperty('storm-track-nodes', 'circle-stroke-color', [
+          'case',
+          ['get', 'expired'],
+          '#475569',
+          trackColor
+        ]);
+      }
+
+      const hazardSrc = map.getSource('storm-hazard-source') as maplibregl.GeoJSONSource;
+      if (hazardSrc) hazardSrc.setData(buildAllHazardRingsGeoJSON(timeOffset, mode));
+
+      const eqSrc = map.getSource('earthquake-source') as maplibregl.GeoJSONSource;
+      if (eqSrc) {
+        const eqData = EarthServices.getLiveEarthquakes(selectedDate);
+        eqSrc.setData({
+          type: 'FeatureCollection',
+          features: eqData.map(eq => ({
+            type: 'Feature',
+            properties: { mag: eq.magnitude, title: eq.place, depth: eq.depth },
+            geometry: { type: 'Point', coordinates: [eq.lng, eq.lat] }
+          }))
+        });
+      }
+
+      const fireSrc = map.getSource('wildfire-source') as maplibregl.GeoJSONSource;
+      if (fireSrc) {
+        const fireData = EarthServices.getLiveWildfires(selectedDate);
+        fireSrc.setData({
+          type: 'FeatureCollection',
+          features: fireData.map(f => ({
+            type: 'Feature',
+            properties: { intensity: f.intensity },
+            geometry: { type: 'Point', coordinates: [f.lng, f.lat] }
+          }))
+        });
+      }
+
+      const tog = (id: string, on: boolean) => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); };
+      tog('storm-hazard-gale',     layers.storm || layers.rain);
+      tog('storm-hazard-storm',    layers.storm || layers.wind);
+      tog('storm-hazard-eye-wall', layers.storm);
+      tog('storm-hazard-clouds',   layers.clouds);
+
+      tog('radar-tiles-layer', layers.rain);
+
+      tog('earthquake-layer', layers.earthquake);
+      if (map.getLayer('earthquake-layer')) {
+        map.setPaintProperty('earthquake-layer', 'circle-opacity', (layerOpacities.earthquake ?? 0.85) * 0.95);
+      }
+      tog('wildfire-layer', layers.wildfire);
+      if (map.getLayer('wildfire-layer')) {
+        map.setPaintProperty('wildfire-layer', 'circle-opacity', (layerOpacities.wildfire ?? 0.9) * 0.95);
+      }
+      tog('volcano-layer', layers.volcano);
+      if (map.getLayer('volcano-layer')) {
+        map.setPaintProperty('volcano-layer', 'circle-opacity', (layerOpacities.volcano ?? 0.9) * 0.95);
+      }
+
+
+
+      // Sync 3D Terrain
+      if (layers.terrain) {
+        if (!map.getTerrain()) {
+          map.setTerrain({ source: 'terrain-rgb', exaggeration: 1.5 });
+          map.easeTo({ pitch: 45, duration: 1000 });
+        }
+      } else {
+        if (map.getTerrain()) {
+          map.setTerrain(null);
+          map.easeTo({ pitch: 0, duration: 1000 });
+        }
+      }
+
+      // Sync active WMS/XYZ/GIBS/Wayback layers
+      try {
+        const style = map.getStyle();
+        if (style && style.layers) {
+          style.layers.forEach((layer) => {
+            if (layer.id.startsWith('gis-layer-')) {
+              const originalId = layer.id.replace('gis-layer-', '');
+              const activeL = activeGisLayers[originalId];
+              if (!activeL || !activeL.visible) {
+                map.setLayoutProperty(layer.id, 'visibility', 'none');
+              }
+            }
+          });
+        }
+      } catch (e) {}
+
+      Object.entries(activeGisLayers).forEach(([id, l]) => {
+        const gisLyrId = `gis-layer-${id}`;
+        const srcId = `gis-src-${id}`;
+
+        if (l.visible) {
+          if (!map.getLayer(gisLyrId)) {
+            let urlTemplate = '';
+            if (l.type === 'xyz' && l.url) {
+              urlTemplate = l.url;
+            } else if (l.type === 'wms' && l.url && l.wmsLayer) {
+              urlTemplate = `${l.url}?service=WMS&version=1.1.1&request=GetMap&layers=${l.wmsLayer}&styles=&format=image/png&transparent=true&width=256&height=256&srs=EPSG:3857&bbox={bbox-epsg-3857}`;
+            } else if (l.type === 'gibs' && l.gibsId && l.gibsMatrix && l.gibsExt) {
+              urlTemplate = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${l.gibsId}/default/${gibsDate}/${l.gibsMatrix}/{z}/{y}/{x}.${l.gibsExt}`;
+            } else if (l.type === 'wayback') {
+              urlTemplate = `https://wayback.maptiles.arcgis.com/arcgis/rest/services/world_imagery/wmts/1.0.0/default028mm/mapserver/tile/${waybackRel || '0'}/{z}/{y}/{x}`;
+            }
+
+            if (urlTemplate) {
+              map.addSource(srcId, {
+                type: 'raster',
+                tiles: [urlTemplate],
+                tileSize: 256,
+              });
+              map.addLayer({
+                id: gisLyrId,
+                type: 'raster',
+                source: srcId,
+                layout: { visibility: 'visible' },
+                paint: { 'raster-opacity': l.opacity }
+              });
+            }
+          } else {
+            map.setLayoutProperty(gisLyrId, 'visibility', 'visible');
+            map.setPaintProperty(gisLyrId, 'raster-opacity', l.opacity);
+
+            const src = map.getSource(srcId) as any;
+            if (src) {
+              let nextTileUrl = '';
+              if (l.type === 'gibs' && l.gibsId && l.gibsMatrix && l.gibsExt) {
+                nextTileUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${l.gibsId}/default/${gibsDate}/${l.gibsMatrix}/{z}/{y}/{x}.${l.gibsExt}`;
+              } else if (l.type === 'wayback') {
+                nextTileUrl = `https://wayback.maptiles.arcgis.com/arcgis/rest/services/world_imagery/wmts/1.0.0/default028mm/mapserver/tile/${waybackRel || '0'}/{z}/{y}/{x}`;
+              }
+              if (nextTileUrl) {
+                src.setTiles([nextTileUrl]);
+              }
+            }
           }
         } else {
-          map.setLayoutProperty(gisLyrId, 'visibility', 'visible');
-          map.setPaintProperty(gisLyrId, 'raster-opacity', l.opacity);
-
-          const src = map.getSource(srcId) as any;
-          if (src) {
-            let nextTileUrl = '';
-            if (l.type === 'gibs' && l.gibsId && l.gibsMatrix && l.gibsExt) {
-              nextTileUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${l.gibsId}/default/${gibsDate}/${l.gibsMatrix}/{z}/{y}/{x}.${l.gibsExt}`;
-            } else if (l.type === 'wayback') {
-              nextTileUrl = `https://wayback.maptiles.arcgis.com/arcgis/rest/services/world_imagery/wmts/1.0.0/default028mm/mapserver/tile/${waybackRel || '0'}/{z}/{y}/{x}`;
-            }
-            if (nextTileUrl) {
-              src.setTiles([nextTileUrl]);
-            }
-          }
-        }
-      } else {
-        if (map.getLayer(gisLyrId)) {
-          map.setLayoutProperty(gisLyrId, 'visibility', 'none');
-        }
-      }
-    });
-
-    // Sync uploaded KML tracks
-    uploadedKmls.forEach(k => {
-      const srcId = `kml-src-${k.id}`;
-      const lineLyrId = `kml-line-${k.id}`;
-      const fillLyrId = `kml-fill-${k.id}`;
-
-      if (!map.getSource(srcId)) {
-        map.addSource(srcId, { type: 'geojson', data: k.geojson });
-
-        map.addLayer({
-          id: fillLyrId,
-          type: 'fill',
-          source: srcId,
-          layout: { visibility: k.visible ? 'visible' : 'none' },
-          paint: {
-            'fill-color': k.color,
-            'fill-opacity': k.opacity * 0.28
-          }
-        });
-
-        map.addLayer({
-          id: lineLyrId,
-          type: 'line',
-          source: srcId,
-          layout: { visibility: k.visible ? 'visible' : 'none' },
-          paint: {
-            'line-color': k.color,
-            'line-width': 2.2,
-            'line-opacity': k.opacity
-          }
-        });
-      } else {
-        if (map.getLayer(fillLyrId)) {
-          map.setLayoutProperty(fillLyrId, 'visibility', k.visible ? 'visible' : 'none');
-          map.setPaintProperty(fillLyrId, 'fill-opacity', k.opacity * 0.28);
-        }
-        if (map.getLayer(lineLyrId)) {
-          map.setLayoutProperty(lineLyrId, 'visibility', k.visible ? 'visible' : 'none');
-          map.setPaintProperty(lineLyrId, 'line-opacity', k.opacity);
-        }
-      }
-    });
-
-    // Remove deleted KML tracks
-    const activeKmlIds = new Set(uploadedKmls.map(k => k.id));
-    const layersOnMap = map.getStyle().layers;
-    if (layersOnMap) {
-      layersOnMap.forEach(lyr => {
-        if (lyr.id.startsWith('kml-line-') || lyr.id.startsWith('kml-fill-')) {
-          const kmlId = lyr.id.replace('kml-line-', '').replace('kml-fill-', '');
-          if (!activeKmlIds.has(kmlId)) {
-            if (map.getLayer(lyr.id)) map.removeLayer(lyr.id);
-            const srcId = `kml-src-${kmlId}`;
-            if (map.getSource(srcId)) map.removeSource(srcId);
+          if (map.getLayer(gisLyrId)) {
+            map.setLayoutProperty(gisLyrId, 'visibility', 'none');
           }
         }
       });
+
+      // Sync uploaded KML tracks
+      uploadedKmls.forEach(k => {
+        const srcId = `kml-src-${k.id}`;
+        const lineLyrId = `kml-line-${k.id}`;
+        const fillLyrId = `kml-fill-${k.id}`;
+
+        if (!map.getSource(srcId)) {
+          map.addSource(srcId, { type: 'geojson', data: k.geojson });
+
+          map.addLayer({
+            id: fillLyrId,
+            type: 'fill',
+            source: srcId,
+            layout: { visibility: k.visible ? 'visible' : 'none' },
+            paint: {
+              'fill-color': k.color,
+              'fill-opacity': k.opacity * 0.28
+            }
+          });
+
+          map.addLayer({
+            id: lineLyrId,
+            type: 'line',
+            source: srcId,
+            layout: { visibility: k.visible ? 'visible' : 'none' },
+            paint: {
+              'line-color': k.color,
+              'line-width': 2.2,
+              'line-opacity': k.opacity
+            }
+          });
+        } else {
+          if (map.getLayer(fillLyrId)) {
+            map.setLayoutProperty(fillLyrId, 'visibility', k.visible ? 'visible' : 'none');
+            map.setPaintProperty(fillLyrId, 'fill-opacity', k.opacity * 0.28);
+          }
+          if (map.getLayer(lineLyrId)) {
+            map.setLayoutProperty(lineLyrId, 'visibility', k.visible ? 'visible' : 'none');
+            map.setPaintProperty(lineLyrId, 'line-opacity', k.opacity);
+          }
+        }
+      });
+
+      // Remove deleted KML tracks
+      const activeKmlIds = new Set(uploadedKmls.map(k => k.id));
+      try {
+        const style = map.getStyle();
+        const layersOnMap = style ? style.layers : undefined;
+        if (layersOnMap) {
+          layersOnMap.forEach(lyr => {
+            if (lyr.id.startsWith('kml-line-') || lyr.id.startsWith('kml-fill-')) {
+              const kmlId = lyr.id.replace('kml-line-', '').replace('kml-fill-', '');
+              if (!activeKmlIds.has(kmlId)) {
+                if (map.getLayer(lyr.id)) map.removeLayer(lyr.id);
+                const srcId = `kml-src-${kmlId}`;
+                if (map.getSource(srcId)) map.removeSource(srcId);
+              }
+            }
+          });
+        }
+      } catch (e) {}
+    } catch (err) {
+      console.warn('Map sync deferred until style loaded:', err);
     }
 
-  }, [timeOffset, layers, layerOpacities, mapReady, mode, activeBasemap, activeGisLayers, gibsDate, waybackRel, uploadedKmls, selectedDate]);
+  }, [timeOffset, layers, layerOpacities, mapReady, mode, activeBasemap, activeGisLayers, gibsDate, waybackRel, uploadedKmls, selectedDate, stormsUpdateKey]);
 
   // ── 3.5 Update selected state highlight region ────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
 
-    const stateHighlightSrc = map.getSource('state-highlight-source') as maplibregl.GeoJSONSource;
-    if (stateHighlightSrc) {
-      if (selectedLocationId) {
-        const city = cities.find(c => c.id === selectedLocationId);
-        if (city) {
-          const poly = createCirclePolygon(city.coord.lat, city.coord.lng, 180); // 180 km radius highlight
+    try {
+      if (!map.isStyleLoaded()) return;
+      const stateHighlightSrc = map.getSource('state-highlight-source') as maplibregl.GeoJSONSource;
+      if (stateHighlightSrc) {
+        if (selectedLocationId) {
+          const city = cities.find(c => c.id === selectedLocationId);
+          if (city) {
+            const poly = createCirclePolygon(city.coord.lat, city.coord.lng, 180); // 180 km radius highlight
+            stateHighlightSrc.setData({
+              type: 'FeatureCollection',
+              features: [{
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                  type: 'Polygon',
+                  coordinates: poly
+                }
+              }]
+            });
+          }
+        } else {
           stateHighlightSrc.setData({
             type: 'FeatureCollection',
-            features: [{
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'Polygon',
-                coordinates: poly
-              }
-            }]
+            features: []
           });
         }
-      } else {
-        stateHighlightSrc.setData({
-          type: 'FeatureCollection',
-          features: []
-        });
       }
-    }
+    } catch (e) {}
   }, [selectedLocationId, mapReady]);
 
   // ── 4. Update Radar frame tile path source ────────────────
@@ -1000,20 +1020,22 @@ export default function WeatherMap({
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded() || !layers.rain || radarFrames.length === 0) return;
     
-    const frame = radarFrames[radarFrameIndex];
-    if (!frame) return;
+    try {
+      const frame = radarFrames[radarFrameIndex];
+      if (!frame) return;
 
-    const radarSource = map.getSource('radar-tiles') as any;
-    if (radarSource) {
-      const tileUrl = `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
-      radarSource.tiles = [tileUrl];
-      
-      const style = map.style as any;
-      if (style && style.sourceCaches && style.sourceCaches['radar-tiles']) {
-        style.sourceCaches['radar-tiles'].update(map.transform);
+      const radarSource = map.getSource('radar-tiles') as any;
+      if (radarSource) {
+        const tileUrl = `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+        radarSource.tiles = [tileUrl];
+        
+        const style = map.style as any;
+        if (style && style.sourceCaches && style.sourceCaches['radar-tiles']) {
+          style.sourceCaches['radar-tiles'].update(map.transform);
+        }
+        map.triggerRepaint();
       }
-      map.triggerRepaint();
-    }
+    } catch (e) {}
   }, [radarFrameIndex, radarFrames, layers.rain]);
 
   // ── 5. Draw static parameter overlays (Full-bleed Zoom Earth/Windy interpolation style) ──
@@ -1533,6 +1555,18 @@ export default function WeatherMap({
                 >
                   ↗ {storm.forecastMovement}
                 </div>
+                
+                {/* Storm Hazard Banner Tooltip */}
+                <div className="absolute hidden group-hover:flex flex-col bottom-full mb-8 left-1/2 -translate-x-1/2 bg-slate-950 border border-slate-700 text-slate-200 text-[9px] p-2.5 rounded shadow-2xl w-48 z-50 pointer-events-none">
+                  <strong className="text-sky-400 mb-1 border-b border-slate-800 pb-1 uppercase tracking-wider">Active Hazard Tracking</strong>
+                  <span className="leading-tight text-slate-300 mb-1.5">This symbol represents an active severe weather system (cyclone, hurricane, etc.) tracked by the AI platform.</span>
+                  <div className="grid grid-cols-2 gap-x-1 gap-y-1 font-mono text-[8px]">
+                    <span style={{ color: '#ef4444' }}>■ Cat 5 / Extreme</span>
+                    <span style={{ color: '#f97316' }}>■ Cat 3-4 / Severe</span>
+                    <span style={{ color: '#f59e0b' }}>■ Cat 1-2 / High</span>
+                    <span style={{ color: '#eab308' }}>■ TS / Moderate</span>
+                  </div>
+                </div>
               </div>
             );
           })}
@@ -1562,14 +1596,28 @@ export default function WeatherMap({
                 <div className={`flex items-center gap-1 bg-[#020408ee] hover:bg-slate-900 border rounded-full px-2 py-0.5 shadow-lg transition-all duration-200 ${
                   isSelected ? 'border-sky-400 ring-2 ring-sky-500/30' : 'border-slate-700/50'
                 }`}>
-                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: tempPillColor }} />
+                  <div className="relative group/dot flex items-center justify-center">
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse cursor-help" style={{ backgroundColor: tempPillColor }} />
+                    <div className="absolute hidden group-hover/dot:flex flex-col bottom-full mb-1 left-1/2 -translate-x-1/2 bg-slate-950 border border-slate-700 text-slate-200 text-[9px] p-2 rounded shadow-2xl w-44 z-50 pointer-events-none">
+                      <strong className="text-sky-400 mb-1 border-b border-slate-800 pb-1 uppercase tracking-wider">Thermal Risk Indicator</strong>
+                      <span className="mb-1 leading-tight text-slate-300">Color indicates current heat stress level used by the AI engine:</span>
+                      <div className="grid grid-cols-2 gap-x-1 gap-y-0.5 font-mono text-[8px]">
+                        <span style={{ color: '#9333ea' }}>■ Extreme &gt;40°C</span>
+                        <span style={{ color: '#ef4444' }}>■ Severe &gt;35°C</span>
+                        <span style={{ color: '#f97316' }}>■ High &gt;30°C</span>
+                        <span style={{ color: '#f59e0b' }}>■ Elevated &gt;25°C</span>
+                        <span style={{ color: '#eab308' }}>■ Warm &gt;20°C</span>
+                        <span style={{ color: '#22c55e' }}>■ Safe &le;20°C</span>
+                      </div>
+                    </div>
+                  </div>
                   <span className="text-[10px] font-bold text-slate-200 whitespace-nowrap">
                     {city.name} <span className="text-slate-400 font-normal ml-0.5">{tempVal}°</span>
                   </span>
                 </div>
 
                 {/* Wind speed & direction arrow pill */}
-                <div className="flex items-center gap-1 bg-[#0f172acc] border border-slate-800 rounded-full px-1.5 py-0.5 shadow-md text-[8px] font-bold text-sky-400 transition-transform duration-200 group-hover:scale-105">
+                <div className="relative group/wind flex items-center gap-1 bg-[#0f172acc] border border-slate-800 rounded-full px-1.5 py-0.5 shadow-md text-[8px] font-bold text-sky-400 transition-transform duration-200 hover:scale-105 cursor-help">
                   <span>{Math.round(weather.windSpeed)}</span>
                   <span 
                     className="inline-block text-[9px]"
@@ -1577,6 +1625,10 @@ export default function WeatherMap({
                   >
                     ↑
                   </span>
+                  <div className="absolute hidden group-hover/wind:flex flex-col bottom-full mb-1 left-1/2 -translate-x-1/2 bg-slate-950 border border-slate-700 text-slate-200 text-[9px] p-2 rounded shadow-2xl w-40 z-50 pointer-events-none">
+                    <strong className="text-sky-400 mb-1 border-b border-slate-800 pb-1 uppercase tracking-wider">Wind Vector</strong>
+                    <span className="leading-tight text-slate-300">Displays surface wind speed (km/h) and predicted trajectory direction.</span>
+                  </div>
                 </div>
               </div>
             );

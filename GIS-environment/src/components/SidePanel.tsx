@@ -35,6 +35,7 @@ interface SidePanelProps {
   onClose: () => void;
   activeTab?: PanelTab;
   onTabChange?: (tab: PanelTab) => void;
+  onOpenExportModal?: () => void;
 }
 
 interface AIPastPrediction {
@@ -92,7 +93,7 @@ function calculatePastStormPrediction(data: {
   };
 }
 
-export default function SidePanel({ locationId, locationType, timeOffset, selectedDate, compareDate, onClose, activeTab: propTab, onTabChange: propSetTab }: SidePanelProps) {
+export default function SidePanel({ locationId, locationType, timeOffset, selectedDate, compareDate, onClose, activeTab: propTab, onTabChange: propSetTab, onOpenExportModal }: SidePanelProps) {
   const [localTab, setLocalTab] = useState<PanelTab>('present');
   const tab = propTab !== undefined ? propTab : localTab;
   const setTab = propSetTab !== undefined ? propSetTab : setLocalTab;
@@ -116,7 +117,7 @@ export default function SidePanel({ locationId, locationType, timeOffset, select
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState(false);
   const [aqi, setAqi] = useState<number | null>(null);
-  void preferences; void compareDate; void futureMLData; void setFutureMLData; void loading; void setLoading;
+  void preferences; void compareDate; void futureMLData; void setFutureMLData;
   const todayStr = new Date().toISOString().split('T')[0];
   const isToday = selectedDate === todayStr;
   const isHistorical = selectedDate < todayStr;
@@ -127,29 +128,33 @@ export default function SidePanel({ locationId, locationType, timeOffset, select
     const city = cities.find(c => c.id === locationId);
     if (!city) return;
 
+    let active = true;
+
     const fetchWeather = async () => {
       setLoading(true);
       setApiError(false);
       try {
         if (isToday) {
           const data = await fetchLiveWeather(city.coord);
+          if (!active) return;
           setLiveData(data);
           setHistoricalData(null);
           setFutureMLData(null);
           try {
             const aqiRes = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${city.coord.lat}&longitude=${city.coord.lng}&current=us_aqi`);
-            if (aqiRes.ok) {
+            if (aqiRes.ok && active) {
               const aqiJson = await aqiRes.json();
               setAqi(aqiJson.current?.us_aqi ?? null);
-            } else {
+            } else if (active) {
               setAqi(null);
             }
           } catch {
-            setAqi(null);
+            if (active) setAqi(null);
           }
         } else if (isHistorical) {
           const { getHistoricalRecord } = await import('../api/historicalData');
           const csvRecord = await getHistoricalRecord(selectedDate);
+          if (!active) return;
           if (csvRecord) {
             setHistoricalData({
               ...csvRecord,
@@ -159,6 +164,7 @@ export default function SidePanel({ locationId, locationType, timeOffset, select
             setFutureMLData(null);
           } else {
             const r = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${city.coord.lat}&longitude=${city.coord.lng}&start_date=${selectedDate}&end_date=${selectedDate}&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,cloud_cover,visibility,pressure_msl,wind_speed_10m,wind_gusts_10m,wind_direction_10m,dew_point_2m&daily=sunrise,sunset,uv_index_max&timezone=auto`);
+            if (!active) return;
             if (r.ok) {
               const d = await r.json();
               if (d.hourly?.time?.length > 0) {
@@ -188,16 +194,13 @@ export default function SidePanel({ locationId, locationType, timeOffset, select
             }
           }
         } else if (isFuture) {
-          // Future predictions are handled independently by the Future tab's own useEffect
-          // which calls fetchFuturePrediction() from the refactored futureService.
-          // This branch is intentionally left as a no-op to avoid dual fetch conflicts.
           setLiveData(null);
           setHistoricalData(null);
         }
       } catch {
-        setApiError(true);
+        if (active) setApiError(true);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
@@ -207,6 +210,7 @@ export default function SidePanel({ locationId, locationType, timeOffset, select
       interval = setInterval(fetchWeather, 5 * 60 * 1000);
     }
     return () => {
+      active = false;
       if (interval) clearInterval(interval);
     };
   }, [locationId, locationType, selectedDate, isToday, isHistorical, isFuture]);
@@ -543,7 +547,7 @@ export default function SidePanel({ locationId, locationType, timeOffset, select
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
-    doc.text('AeroTempest AI', 20, 16);
+    doc.text('Geolith Portal AI', 20, 16);
     
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
@@ -685,7 +689,7 @@ export default function SidePanel({ locationId, locationType, timeOffset, select
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
-      doc.text('AeroTempest AI - 7-Day Extended Forecast', 20, 13);
+      doc.text('Geolith Portal AI - 7-Day Extended Forecast', 20, 13);
 
       doc.setTextColor(30, 41, 59);
       doc.setFontSize(12);
@@ -723,10 +727,10 @@ export default function SidePanel({ locationId, locationType, timeOffset, select
       doc.text(`Page ${i} of ${pageCount}`, 175, 287);
     }
 
-    doc.save(`AeroTempest_Briefing_${title.replace(/\s+/g, '_')}_${selectedDate}.pdf`);
+    doc.save(`GeolithPortal_Briefing_${title.replace(/\s+/g, '_')}_${selectedDate}.pdf`);
   };
   return (
-    <div className="glass-panel w-96 h-full flex flex-col shadow-2xl border-l border-slate-700/40 text-slate-200 overflow-y-auto animate-in slide-in-from-right duration-300">
+    <div className="glass-panel w-full h-full flex flex-col shadow-2xl border-l border-slate-700/40 text-slate-200 overflow-y-auto animate-in slide-in-from-right duration-300">
       
       {/* Header */}
       <div className="flex items-center justify-between p-5 border-b border-slate-800 shrink-0">
@@ -737,7 +741,7 @@ export default function SidePanel({ locationId, locationType, timeOffset, select
         <div className="flex items-center gap-2">
           {/* Export Report */}
           <button
-            onClick={handleExportReport}
+            onClick={() => onOpenExportModal ? onOpenExportModal() : handleExportReport()}
             className="p-1.5 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 hover:bg-sky-500/20 hover:text-sky-300 transition-all flex items-center gap-1.5 text-xs font-bold"
             title="Download Meteorological Report"
           >
@@ -1694,9 +1698,9 @@ export default function SidePanel({ locationId, locationType, timeOffset, select
             {/* Probability Gauge */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center text-center relative overflow-hidden group">
               <div className="relative flex items-center justify-center">
-                {renderCircleGauge(ai.probability, ai.probability > 75 ? 'stroke-red-500' : ai.probability > 45 ? 'stroke-orange-500' : ai.probability > 20 ? 'stroke-yellow-500' : 'stroke-emerald-500')}
+                {renderCircleGauge(loading ? 0 : ai.probability, ai.probability > 75 ? 'stroke-red-500' : ai.probability > 45 ? 'stroke-orange-500' : ai.probability > 20 ? 'stroke-yellow-500' : 'stroke-emerald-500')}
                 <span className="absolute text-base font-extrabold text-white font-mono">
-                  {ai.probability}%
+                  {loading ? '--' : `${ai.probability}%`}
                 </span>
               </div>
               <span className="text-[10px] font-bold text-slate-400 mt-2.5 uppercase tracking-wide">
@@ -1707,9 +1711,9 @@ export default function SidePanel({ locationId, locationType, timeOffset, select
             {/* Confidence Gauge */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center text-center relative overflow-hidden group">
               <div className="relative flex items-center justify-center">
-                {renderCircleGauge(ai.confidence, 'stroke-sky-400')}
+                {renderCircleGauge(loading ? 0 : ai.confidence, 'stroke-sky-400')}
                 <span className="absolute text-base font-extrabold text-white font-mono">
-                  {ai.confidence}%
+                  {loading ? '--' : `${ai.confidence}%`}
                 </span>
               </div>
               <span className="text-[10px] font-bold text-slate-400 mt-2.5 uppercase tracking-wide">

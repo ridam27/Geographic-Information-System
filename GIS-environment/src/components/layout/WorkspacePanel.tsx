@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Image, Radio, Globe, Heart, Briefcase, Code, Brain, X } from 'lucide-react';
+import { Layers, Image, Radio, Globe, Heart, Briefcase, Brain, X } from 'lucide-react';
 
 interface WorkspacePanelProps {
   isOpen: boolean;
@@ -11,8 +11,8 @@ interface WorkspacePanelProps {
   radarContent: React.ReactNode;
   terrainContent: React.ReactNode;
   environmentContent: React.ReactNode;
-  enterpriseContent: React.ReactNode;
-  developerContent: React.ReactNode;
+  enterpriseContent?: React.ReactNode;
+  developerContent?: React.ReactNode;
   aiContent: React.ReactNode;
 }
 
@@ -26,8 +26,6 @@ export const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
   radarContent,
   terrainContent,
   environmentContent,
-  enterpriseContent,
-  developerContent,
   aiContent,
 }) => {
   if (!isOpen) return null;
@@ -38,8 +36,6 @@ export const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
     { id: 'radar' as const, label: 'Radar', icon: Radio },
     { id: 'terrain' as const, label: 'Terrain', icon: Globe },
     { id: 'environment' as const, label: 'Environment', icon: Heart },
-    { id: 'enterprise' as const, label: 'Enterprise', icon: Briefcase },
-    { id: 'developer' as const, label: 'Developer', icon: Code },
     { id: 'ai' as const, label: 'AI Analytics', icon: Brain },
   ];
 
@@ -87,8 +83,6 @@ export const WorkspacePanel: React.FC<WorkspacePanelProps> = ({
         {activeTab === 'radar' && radarContent}
         {activeTab === 'terrain' && terrainContent}
         {activeTab === 'environment' && environmentContent}
-        {activeTab === 'enterprise' && enterpriseContent}
-        {activeTab === 'developer' && developerContent}
         {activeTab === 'ai' && aiContent}
       </div>
     </div>

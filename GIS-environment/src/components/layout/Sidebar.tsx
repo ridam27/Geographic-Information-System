@@ -11,7 +11,8 @@ import {
   Columns,
   Bell,
   Bot,
-  Compass
+  Compass,
+  Globe2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -19,6 +20,7 @@ export type PrimaryNavTab =
   | 'dashboard' 
   | 'map' 
   | 'weather' 
+  | 'earth'
   | 'analytics' 
   | 'comparison'
   | 'reports' 
@@ -46,13 +48,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const sidebarItems = [
     { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-400' },
     { id: 'map' as const, label: 'GIS Map', icon: Map, color: 'text-sky-400' },
-    { id: 'weather' as const, label: 'Weather Feed', icon: CloudSun, color: 'text-amber-400' },
+    { id: 'earth' as const, label: 'Earth Services', icon: Globe2, color: 'text-teal-400', badge: 'LIVE' },
     { id: 'analytics' as const, label: 'AI Analytics', icon: Brain, color: 'text-purple-400' },
     { id: 'comparison' as const, label: 'Comparison', icon: Columns, color: 'text-amber-400' },
     { id: 'reports' as const, label: 'Reports', icon: FileText, color: 'text-emerald-400' },
     { id: 'alerts' as const, label: 'Storm Alerts', icon: Bell, color: 'text-red-400', showBadge: true },
-    { id: 'copilot' as const, label: 'AI Copilot', icon: Bot, color: 'text-purple-400', badge: 'v2.0' },
-    { id: 'geospatial' as const, label: 'Geospatial Tools', icon: Compass, color: 'text-cyan-400' },
+    { id: 'copilot' as const, label: 'Geolith AI', icon: Bot, color: 'text-purple-400', badge: 'v2.0' },
     { id: 'settings' as const, label: 'Settings', icon: Settings, color: 'text-slate-400' },
   ];
 

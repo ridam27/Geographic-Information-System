@@ -58,9 +58,20 @@ for (const rel of NODE_PROJECTS) {
   if (!ok) failures.push(rel);
 }
 
+function getSystemPython() {
+  const candidates = isWin ? ['python', 'py', 'python3'] : ['python3', 'python'];
+  for (const cmd of candidates) {
+    const res = spawnSync(cmd, ['--version'], { stdio: 'ignore', shell: true });
+    if (res.status === 0) return cmd;
+  }
+  return isWin ? 'python' : 'python3';
+}
+
 for (const { dir: rel, requirements } of PYTHON_PROJECTS) {
   const dir = path.join(ROOT, rel);
-  const venvPython = path.join(dir, 'venv', 'Scripts', 'python.exe');
+  const venvPython = isWin
+    ? path.join(dir, 'venv', 'Scripts', 'python.exe')
+    : path.join(dir, 'venv', 'bin', 'python');
   const reqPath = path.join(dir, requirements);
 
   if (!fs.existsSync(reqPath)) {
@@ -68,7 +79,8 @@ for (const { dir: rel, requirements } of PYTHON_PROJECTS) {
     continue;
   }
   if (!fs.existsSync(venvPython)) {
-    const ok = run('python', ['-m', 'venv', 'venv'], dir, `create venv — ${rel}`);
+    const pythonCmd = getSystemPython();
+    const ok = run(pythonCmd, ['-m', 'venv', 'venv'], dir, `create venv — ${rel}`);
     if (!ok) {
       failures.push(rel);
       continue;

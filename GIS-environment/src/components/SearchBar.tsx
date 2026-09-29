@@ -1,16 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, MapPin, Navigation, Info } from 'lucide-react';
-import { cities } from '../mockData';
+import { Search, MapPin, Navigation, Info, Loader2 } from 'lucide-react';
+import { LocationService, type ResolvedLocationResult } from '../services/locationService';
 
 interface SearchBarProps {
-  onSearchSelect: (item: any) => void;
+  onSearchSelect: (item: ResolvedLocationResult) => void;
+  activeLocationName?: string | null;
 }
 
-export default function SearchBar({ onSearchSelect }: SearchBarProps) {
+export default function SearchBar({ onSearchSelect, activeLocationName }: SearchBarProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<ResolvedLocationResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sync search input query text when activeLocationName changes externally (e.g. from chatbot)
+  useEffect(() => {
+    if (activeLocationName) {
+      setQuery(activeLocationName);
+    }
+  }, [activeLocationName]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -23,131 +32,69 @@ export default function SearchBar({ onSearchSelect }: SearchBarProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter cities and fetch global locations as query changes
+  // Search locations as query changes
   useEffect(() => {
-    if (!query.trim()) {
+    if (!query.trim() || query.length < 2) {
       setResults([]);
+      setIsSearching(false);
       return;
     }
 
-    const q = query.toLowerCase().trim();
-
-    // Check if query is latitude/longitude coordinate pair
-    const coordRegex = /^[-+]?([1-9]?\d(\.\d+)?|90(\.0+)?)\s*[, ]\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$/;
-    if (coordRegex.test(query)) {
-      const parts = query.split(/[\s,]+/).map(Number);
-      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-        setResults([
-          {
-            type: 'coordinate',
-            name: `Coordinate: ${parts[0].toFixed(3)}°N, ${parts[1].toFixed(3)}°E`,
-            lat: parts[0],
-            lng: parts[1],
-            zoom: 8.5
-          }
-        ]);
-        return;
-      }
+    // Skip searching if current query already matches active location exactly
+    if (activeLocationName && query.toLowerCase().trim() === activeLocationName.toLowerCase().trim()) {
+      setResults([]);
+      setIsSearching(false);
+      return;
     }
 
-    const fetchGlobalSearch = async () => {
+    let active = true;
+    setIsSearching(true);
+
+    const timer = setTimeout(async () => {
       try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1`, {
-          headers: {
-            'User-Agent': 'AeroTempest-GIS-App/1.0'
-          }
-        });
-        const data = await response.json();
-        
-        let geocodeResults: any[] = [];
-        if (Array.isArray(data)) {
-          geocodeResults = data.map((item: any) => {
-            // Determine zoom level based on the class and type of place
-            let zoom = 14.5; // Default for colonies, suburbs, streets
-            if (item.type === 'city' || item.type === 'town' || item.class === 'place' && item.type === 'city') {
-              zoom = 10.0;
-            } else if (item.type === 'administrative' || item.type === 'country') {
-              zoom = 6.0;
-            } else if (item.type === 'house' || item.type === 'building' || item.class === 'highway') {
-              zoom = 16.5;
-            }
-
-            const addr = item.address || {};
-            const localName = addr.suburb || addr.neighbourhood || addr.village || addr.road || item.display_name.split(',')[0];
-            const parentState = addr.city || addr.town || addr.county || addr.state || '';
-
-            return {
-              type: 'city',
-              id: `osm-${item.place_id}`,
-              name: item.display_name,
-              country: addr.country || '',
-              lat: parseFloat(item.lat),
-              lng: parseFloat(item.lon),
-              zoom: zoom,
-              originalName: localName,
-              originalState: parentState
-            };
-          });
+        const searchRes = await LocationService.searchLocations(query);
+        if (active) {
+          setResults(searchRes);
         }
-
-        // Also search existing predefined cities
-        const matchedCities = cities
-          .filter(city => 
-            city.name.toLowerCase().includes(q) || 
-            city.state.toLowerCase().includes(q) ||
-            city.country.toLowerCase().includes(q)
-          )
-          .map(city => ({
-            type: 'city',
-            id: city.id,
-            name: `${city.name}, ${city.state}`,
-            country: city.country,
-            lat: city.coord.lat,
-            lng: city.coord.lng,
-            zoom: 7.5,
-            originalName: city.name,
-            originalState: city.state
-          }));
-
-        // Combine local and global, avoiding exact duplicates by ID or name
-        const combined = [...matchedCities];
-        for (const gc of geocodeResults) {
-          if (!combined.find(c => c.originalName.toLowerCase() === gc.originalName.toLowerCase())) {
-            combined.push(gc);
-          }
-        }
-        setResults(combined);
       } catch (err) {
-        console.error("Geocoding API error", err);
+        console.error('Location search error:', err);
+      } finally {
+        if (active) setIsSearching(false);
       }
+    }, 300);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
     };
+  }, [query, activeLocationName]);
 
-    // Debounce the fetch slightly
-    const timer = setTimeout(() => {
-      fetchGlobalSearch();
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const handleSelect = (item: any) => {
+  const handleSelect = (item: ResolvedLocationResult) => {
     onSearchSelect(item);
-    setQuery(item.type === 'coordinate' ? `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}` : item.name);
+    setQuery(item.displayName || item.name);
     setShowDropdown(false);
+    setResults([]);
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (results.length > 0) {
       handleSelect(results[0]);
+    } else if (query.trim()) {
+      setIsSearching(true);
+      const resolved = await LocationService.resolveLocation(query);
+      setIsSearching(false);
+      if (resolved) {
+        handleSelect(resolved);
+      }
     }
   };
 
   return (
     <div className="relative w-full max-w-sm" ref={dropdownRef}>
       <form onSubmit={handleFormSubmit} className="relative z-30">
-        <div className="glass-panel rounded-xl shadow-xl border border-slate-700/40 flex items-center px-3.5 py-2.5 gap-2.5">
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        <div className="glass-panel rounded-xl shadow-xl border border-slate-700/40 flex items-center px-3.5 py-2.5 gap-2.5 bg-slate-950/80 backdrop-blur-md">
+          <Search className="w-4 h-4 text-sky-400 shrink-0" />
           <input
             type="text"
             value={query}
@@ -156,9 +103,12 @@ export default function SearchBar({ onSearchSelect }: SearchBarProps) {
               setShowDropdown(true);
             }}
             onFocus={() => setShowDropdown(true)}
-            placeholder="Search City, District, or Lat, Lng..."
-            className="bg-transparent border-none outline-none text-xs text-slate-100 placeholder-slate-400 w-full font-medium"
+            placeholder="Search City, Region, or Lat, Lng..."
+            className="bg-transparent border-none outline-none text-xs text-slate-100 placeholder-slate-400 w-full font-mono font-medium"
           />
+          {isSearching && (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-400 shrink-0" />
+          )}
           {query && (
             <button
               type="button"
@@ -166,7 +116,7 @@ export default function SearchBar({ onSearchSelect }: SearchBarProps) {
                 setQuery('');
                 setResults([]);
               }}
-              className="text-[10px] text-slate-500 hover:text-slate-300 font-bold px-1.5 py-0.5 rounded bg-slate-800"
+              className="text-[10px] text-slate-500 hover:text-slate-300 font-bold px-1.5 py-0.5 rounded bg-slate-800 font-mono"
             >
               Clear
             </button>
@@ -175,26 +125,26 @@ export default function SearchBar({ onSearchSelect }: SearchBarProps) {
       </form>
 
       {/* Dropdown Results */}
-      {showDropdown && (results.length > 0 || query.trim().length > 0) && (
-        <div className="absolute top-[52px] left-0 right-0 bg-[#0c0e17] rounded-xl shadow-2xl border border-slate-700/50 p-2 z-50 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-4 duration-150">
+      {showDropdown && (results.length > 0 || (query.trim().length >= 2 && !isSearching)) && (
+        <div className="absolute top-[52px] left-0 right-0 bg-[#0c0e17] rounded-xl shadow-2xl border border-slate-700/50 p-2 z-50 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-4 duration-150 custom-scrollbar font-mono">
           {results.length > 0 ? (
             <div className="flex flex-col gap-1">
-              {results.map((item, idx) => (
+              {results.map((item) => (
                 <button
-                  key={idx}
+                  key={item.id}
                   onClick={() => handleSelect(item)}
-                  className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-left hover:bg-slate-800/80 transition-colors"
+                  className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-left hover:bg-slate-800/80 transition-colors border border-transparent hover:border-slate-700"
                 >
                   {item.type === 'coordinate' ? (
                     <Navigation className="w-4 h-4 text-sky-400 shrink-0 rotate-45" />
                   ) : (
                     <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
                   )}
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-slate-200">{item.name}</span>
-                    {item.country && (
-                      <span className="text-[10px] text-slate-400 font-semibold">{item.country}</span>
-                    )}
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-slate-100 truncate">{item.name}</span>
+                    <span className="text-[10px] text-slate-400 font-medium truncate">
+                      {item.state ? `${item.state}, ` : ''}{item.country}
+                    </span>
                   </div>
                 </button>
               ))}
@@ -203,9 +153,9 @@ export default function SearchBar({ onSearchSelect }: SearchBarProps) {
             <div className="flex items-start gap-2.5 p-3 text-slate-400">
               <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
               <div className="flex flex-col gap-1">
-                <span className="text-xs font-semibold">No locations found</span>
+                <span className="text-xs font-semibold text-slate-300">No locations found</span>
                 <span className="text-[10px] text-slate-500 leading-normal">
-                  Try typing "Taipei", "Manila", "Okinawa", or exact coordinate pairs like "22.62, 120.30".
+                  Try typing "London", "Tokyo", "Paris", "Nagpur", "New York", or "51.50, -0.12".
                 </span>
               </div>
             </div>

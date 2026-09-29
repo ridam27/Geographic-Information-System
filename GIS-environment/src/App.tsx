@@ -29,6 +29,7 @@ import { DeveloperPortalModal } from './components/developer/DeveloperPortalModa
 import { EnvironmentalDashboardModal } from './components/earth/EnvironmentalDashboardModal';
 import { AssetMonitoringModal } from './components/earth/AssetMonitoringModal';
 import { GeospatialToolsModal } from './components/earth/GeospatialToolsModal';
+import EarthServicesPage from './components/earth/EarthServicesPage';
 import { AlertService, type SevereAlert } from './services/alertService';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { GIS_CATALOG, type GisLayerDef } from './api/gisCatalog';
@@ -57,6 +58,22 @@ interface OverlayLayers {
   climateAnomalies: boolean;
   floodRisk: boolean;
 }
+
+export type ActiveModal = 
+  | null 
+  | 'settings' 
+  | 'comparison' 
+  | 'reports' 
+  | 'alerts' 
+  | 'industry' 
+  | 'auth' 
+  | 'admin' 
+  | 'copilot' 
+  | 'verification' 
+  | 'devPortal' 
+  | 'environmental' 
+  | 'asset' 
+  | 'geospatial';
 
 export default function App() {
   // 1. Core Platform State
@@ -165,6 +182,7 @@ export default function App() {
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [selectedLocationType, setSelectedLocationType] = useState<'city' | 'storm' | null>(null);
+  const [activeLocationName, setActiveLocationName] = useState<string>('');
   const [searchTrigger, setSearchTrigger] = useState<{
     lat: number;
     lng: number;
@@ -185,19 +203,7 @@ export default function App() {
   const [showWorkspaceDrawer, setShowWorkspaceDrawer] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState<string>('weather');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showComparisonModal, setShowComparisonModal] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [showAlertsDrawer, setShowAlertsDrawer] = useState(false);
-  const [showIndustryModal, setShowIndustryModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showAdminModal, setShowAdminModal] = useState(false);
-  const [showCopilotModal, setShowCopilotModal] = useState(false);
-  const [showVerificationModal, setShowVerificationModal] = useState(false);
-  const [showDevPortalModal, setShowDevPortalModal] = useState(false);
-  const [showEnvironmentalModal, setShowEnvironmentalModal] = useState(false);
-  const [showAssetModal, setShowAssetModal] = useState(false);
-  const [showGeospatialModal, setShowGeospatialModal] = useState(false);
+  const [activeModal, setActiveModal] = useState<ActiveModal>(null);
   const [activeAlerts, setActiveAlerts] = useState<SevereAlert[]>([]);
 
   const [stormsUpdateKey, setStormsUpdateKey] = useState(0);
@@ -257,6 +263,9 @@ export default function App() {
   const handleSelectLocation = (id: string | null, type: 'city' | 'storm' | null) => {
     setSelectedLocationId(id);
     setSelectedLocationType(type);
+    if (id) {
+      setActiveModal(null);
+    }
   };
 
   const handleToggleLayer = (key: keyof typeof layers) => {
@@ -301,24 +310,31 @@ export default function App() {
     setUploadedKmls((prev) => prev.map(k => k.id === id ? { ...k, ...props } : k));
   };
 
-  const handleSearchSelect = (item: any) => {
-    if (item.lat && item.lng) {
+  const handleSearchSelect = (item: any, options?: { skipInspectorPanel?: boolean }) => {
+    const lat = item.latitude ?? item.lat ?? item.coord?.lat;
+    const lng = item.longitude ?? item.lng ?? item.coord?.lng;
+    if (lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng)) {
       setSearchTrigger({
-        lat: item.lat,
-        lng: item.lng,
+        lat,
+        lng,
         zoom: item.zoom || 10,
         timestamp: Date.now(),
       });
 
-      let matchedCity = cities.find((c: any) => c.id === item.id);
+      const locName = item.name || item.originalName || 'Selected Location';
+      const locDisplay = item.displayName || locName;
+      setActiveLocationName(locDisplay);
+
+      const itemId = item.id || `loc_${Date.now()}`;
+      let matchedCity = cities.find((c: any) => c.id === itemId || c.name.toLowerCase() === locName.toLowerCase());
 
       if (!matchedCity) {
         matchedCity = {
-          id: item.id,
-          name: item.originalName || item.name.split(',')[0],
-          state: item.originalState || item.name.split(',')[1]?.trim() || '',
+          id: itemId,
+          name: locName,
+          state: item.state || item.originalState || '',
           country: item.country || '',
-          coord: { lat: item.lat, lng: item.lng },
+          coord: { lat, lng },
           baseTemp: 25,
           baseHumidity: 60,
           baseWindSpeed: 10,
@@ -326,7 +342,11 @@ export default function App() {
         };
         cities.push(matchedCity);
       }
-      handleSelectLocation(matchedCity.id, 'city');
+
+      // Do NOT open side inspector panel when user is using the Chatbot
+      if (!options?.skipInspectorPanel && activeModal !== 'copilot') {
+        handleSelectLocation(matchedCity.id, 'city');
+      }
     }
   };
 
@@ -350,38 +370,57 @@ export default function App() {
     handleSelectLocation(customId, 'city');
   };
 
+  const handleOpenModal = (modal: ActiveModal) => {
+    setShowWorkspaceDrawer(false);
+    setActiveModal((prev) => (prev === modal ? null : modal));
+  };
+
+  const handleCloseWorkspacePanel = () => {
+    setShowWorkspaceDrawer(false);
+  };
+
   const handleSelectNavTab = (tab: PrimaryNavTab) => {
     setActiveNavTab(tab);
+    if (tab === 'earth') {
+      if (window.location.pathname !== '/earth-services') {
+        window.history.pushState({}, '', '/earth-services');
+      }
+      setShowWorkspaceDrawer(false);
+      setActiveModal(null);
+      return;
+    } else {
+      if (window.location.pathname === '/earth-services') {
+        window.history.pushState({}, '', '/');
+      }
+    }
+
     if (tab === 'workspace') {
       setShowWorkspaceDrawer((prev) => !prev);
+      setActiveModal(null);
     } else if (tab === 'settings') {
-      setShowSettingsModal(true);
-    } else if (tab === 'analytics') {
+      handleOpenModal('settings');
+    } else if (tab === 'analytics' || tab === 'dashboard') {
       setShowWorkspaceDrawer(true);
       setWorkspaceTab('ai');
-    } else if (tab === 'dashboard') {
-      setShowWorkspaceDrawer(true);
-      setWorkspaceTab('ai');
-    } else if (tab === 'map') {
-      setShowWorkspaceDrawer(true);
-      setWorkspaceTab('weather');
-    } else if (tab === 'weather') {
+      setActiveModal(null);
+    } else if (tab === 'map' || tab === 'weather') {
       setShowWorkspaceDrawer(true);
       setWorkspaceTab('weather');
       if (!selectedLocationId) {
-        setSelectedLocationId('mumbai');
+        setSelectedLocationId('nagpur');
         setSelectedLocationType('city');
       }
+      setActiveModal(null);
     } else if (tab === 'comparison') {
-      setShowComparisonModal(true);
+      handleOpenModal('comparison');
     } else if (tab === 'reports') {
-      setShowReportModal(true);
+      handleOpenModal('reports');
     } else if (tab === 'alerts') {
-      setShowAlertsDrawer(true);
+      handleOpenModal('alerts');
     } else if (tab === 'copilot') {
-      setShowCopilotModal(true);
+      handleOpenModal('copilot');
     } else if (tab === 'geospatial') {
-      setShowGeospatialModal(true);
+      handleOpenModal('geospatial');
     }
   };
 
@@ -402,17 +441,16 @@ export default function App() {
             header={
               <Header
                 onSearchSelect={handleSearchSelect}
-                onOpenSettings={() => setShowSettingsModal(true)}
-                onOpenAuth={() => setShowAuthModal(true)}
-                onOpenConsole={() => setShowAdminModal(true)}
-                onOpenAlerts={() => setShowAlertsDrawer(true)}
+                activeLocationName={activeLocationName}
+                onOpenSettings={() => handleOpenModal('settings')}
+                onOpenAlerts={() => handleOpenModal('alerts')}
                 alertCount={activeAlerts.length}
               />
             }
             workspacePanel={
               <WorkspacePanel
                 isOpen={showWorkspaceDrawer}
-                onClose={() => setShowWorkspaceDrawer(false)}
+                onClose={handleCloseWorkspacePanel}
                 activeTab={workspaceTab}
                 onChangeTab={setWorkspaceTab}
                 weatherContent={
@@ -425,7 +463,7 @@ export default function App() {
                 }
                 satelliteContent={
                   <GeoPortalPanel
-                    onClose={() => setShowWorkspaceDrawer(false)}
+                    onClose={handleCloseWorkspacePanel}
                     activeGisLayers={activeGisLayers}
                     onToggleGisLayer={(id) => {
                       let def: GisLayerDef | undefined = Object.values(activeGisLayers).find((l) => l.id === id);
@@ -469,13 +507,13 @@ export default function App() {
                 environmentContent={
                   <div className="flex flex-col gap-3">
                     <button
-                      onClick={() => setShowEnvironmentalModal(true)}
+                      onClick={() => handleOpenModal('environmental')}
                       className="w-full py-2.5 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400 hover:bg-teal-500/20 font-mono text-xs font-bold transition-all text-center"
                     >
                       Open Environmental Telemetry
                     </button>
                     <button
-                      onClick={() => setShowAssetModal(true)}
+                      onClick={() => handleOpenModal('asset')}
                       className="w-full py-2.5 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400 hover:bg-teal-500/20 font-mono text-xs font-bold transition-all text-center"
                     >
                       Open Asset Telemetry
@@ -484,7 +522,7 @@ export default function App() {
                 }
                 enterpriseContent={
                   <button
-                    onClick={() => setShowIndustryModal(true)}
+                    onClick={() => handleOpenModal('industry')}
                     className="w-full py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 font-mono text-xs font-bold transition-all text-center"
                   >
                     Open Enterprise Industry Solutions
@@ -492,7 +530,7 @@ export default function App() {
                 }
                 developerContent={
                   <button
-                    onClick={() => setShowDevPortalModal(true)}
+                    onClick={() => handleOpenModal('devPortal')}
                     className="w-full py-2.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 font-mono text-xs font-bold transition-all text-center"
                   >
                     Open Developer Portal & SDK
@@ -511,32 +549,36 @@ export default function App() {
               />
             }
             mapContainer={
-              <MapContainer
-                floatingToolbar={null}
-                panelContainer={null}
-              >
-                <WeatherMap
-                  key={stormsUpdateKey}
-                  timeOffset={timeOffset}
-                  layers={layers}
-                  layerOpacities={layerOpacities}
-                  selectedLocationId={selectedLocationId}
-                  onSelectLocation={handleSelectLocation}
-                  onMapClick={handleMapClick}
-                  searchTrigger={searchTrigger}
-                  selectedDate={selectedDate}
-                  activeTab={activePanelTab}
-                  activeBasemap={activeBasemap}
-                  activeGisLayers={activeGisLayers}
-                  gibsDate={gibsDate}
-                  waybackRel={waybackRel}
-                  uploadedKmls={uploadedKmls}
-                  measuring={measuring}
-                />
-              </MapContainer>
+              activeNavTab === 'earth' ? (
+                <EarthServicesPage />
+              ) : (
+                <MapContainer
+                  floatingToolbar={null}
+                  panelContainer={null}
+                >
+                  <WeatherMap
+                    stormsUpdateKey={stormsUpdateKey}
+                    timeOffset={timeOffset}
+                    layers={layers}
+                    layerOpacities={layerOpacities}
+                    selectedLocationId={selectedLocationId}
+                    onSelectLocation={handleSelectLocation}
+                    onMapClick={handleMapClick}
+                    searchTrigger={searchTrigger}
+                    selectedDate={selectedDate}
+                    activeTab={activePanelTab}
+                    activeBasemap={activeBasemap}
+                    activeGisLayers={activeGisLayers}
+                    gibsDate={gibsDate}
+                    waybackRel={waybackRel}
+                    uploadedKmls={uploadedKmls}
+                    measuring={measuring}
+                  />
+                </MapContainer>
+              )
             }
             inspectorPanel={
-              <InspectorPanel isOpen={!!selectedLocationId}>
+              <InspectorPanel isOpen={!!selectedLocationId && !showWorkspaceDrawer && !activeModal && activeNavTab !== 'earth'}>
                 <SidePanel
                   locationId={selectedLocationId}
                   locationType={selectedLocationType}
@@ -565,77 +607,83 @@ export default function App() {
             }
             sidebarCollapsed={sidebarCollapsed}
             workspaceOpen={showWorkspaceDrawer}
-            inspectorOpen={!!selectedLocationId}
+            inspectorOpen={!!selectedLocationId && !showWorkspaceDrawer && !activeModal && activeNavTab !== 'earth'}
           />
 
-          {/* Modals */}
+          {/* Modals - Single Active Modal Enforcement */}
           <SettingsModal
-            isOpen={showSettingsModal}
-            onClose={() => setShowSettingsModal(false)}
+            isOpen={activeModal === 'settings'}
+            onClose={() => setActiveModal(null)}
           />
 
           <ComparisonModal
-            isOpen={showComparisonModal}
-            onClose={() => setShowComparisonModal(false)}
+            isOpen={activeModal === 'comparison'}
+            onClose={() => setActiveModal(null)}
+            selectedLocationId={selectedLocationId}
+            activeLocationName={activeLocationName}
           />
 
           <ReportExportModal
-            isOpen={showReportModal}
-            onClose={() => setShowReportModal(false)}
+            isOpen={activeModal === 'reports'}
+            onClose={() => setActiveModal(null)}
             selectedLocationId={selectedLocationId}
           />
 
           <AlertNotificationCenter
             alerts={activeAlerts}
-            isOpen={showAlertsDrawer}
-            onClose={() => setShowAlertsDrawer(false)}
+            isOpen={activeModal === 'alerts'}
+            onClose={() => setActiveModal(null)}
           />
 
           <IndustryWorkspaceModal
-            isOpen={showIndustryModal}
-            onClose={() => setShowIndustryModal(false)}
+            isOpen={activeModal === 'industry'}
+            onClose={() => setActiveModal(null)}
             selectedLocationId={selectedLocationId}
           />
 
           <AuthModal
-            isOpen={showAuthModal}
-            onClose={() => setShowAuthModal(false)}
+            isOpen={activeModal === 'auth'}
+            onClose={() => setActiveModal(null)}
           />
 
           <AdminHealthModal
-            isOpen={showAdminModal}
-            onClose={() => setShowAdminModal(false)}
+            isOpen={activeModal === 'admin'}
+            onClose={() => setActiveModal(null)}
           />
 
           <AICopilotModal
-            isOpen={showCopilotModal}
-            onClose={() => setShowCopilotModal(false)}
+            isOpen={activeModal === 'copilot'}
+            onClose={() => {
+              setActiveModal(null);
+              setSelectedLocationId(null);
+            }}
             selectedLocationId={selectedLocationId}
+            onLocationSelect={handleSearchSelect}
           />
 
           <ForecastVerificationPanel
-            isOpen={showVerificationModal}
-            onClose={() => setShowVerificationModal(false)}
+            isOpen={activeModal === 'verification'}
+            onClose={() => setActiveModal(null)}
           />
 
           <DeveloperPortalModal
-            isOpen={showDevPortalModal}
-            onClose={() => setShowDevPortalModal(false)}
+            isOpen={activeModal === 'devPortal'}
+            onClose={() => setActiveModal(null)}
           />
 
           <EnvironmentalDashboardModal
-            isOpen={showEnvironmentalModal}
-            onClose={() => setShowEnvironmentalModal(false)}
+            isOpen={activeModal === 'environmental'}
+            onClose={() => setActiveModal(null)}
           />
 
           <AssetMonitoringModal
-            isOpen={showAssetModal}
-            onClose={() => setShowAssetModal(false)}
+            isOpen={activeModal === 'asset'}
+            onClose={() => setActiveModal(null)}
           />
 
           <GeospatialToolsModal
-            isOpen={showGeospatialModal}
-            onClose={() => setShowGeospatialModal(false)}
+            isOpen={activeModal === 'geospatial'}
+            onClose={() => setActiveModal(null)}
           />
         </ErrorBoundary>
       </SettingsProvider>

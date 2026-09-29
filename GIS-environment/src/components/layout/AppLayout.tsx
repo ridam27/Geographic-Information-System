@@ -48,7 +48,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
         {/* Workspace Panel */}
         {workspaceOpen && (
-          <div className="pointer-events-auto transition-all duration-300 ease-in-out -translate-x-[calc(100%-12px)] group-hover/left:translate-x-0 shadow-2xl ml-[-12px] h-full w-[340px]">
+          <div className="pointer-events-auto transition-all duration-300 ease-in-out -translate-x-[calc(100%-12px)] group-hover/left:translate-x-0 shadow-2xl ml-[-12px] h-full w-[460px] max-w-[90vw]">
             {workspacePanel}
           </div>
         )}
@@ -56,7 +56,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
       {/* Inspector Panel - always fully visible on the right if inspectorOpen is true */}
       {inspectorOpen && (
-        <div className="absolute right-0 top-[72px] bottom-[28px] w-[360px] z-[90] pointer-events-auto shadow-2xl">
+        <div className="absolute right-0 top-[72px] bottom-[28px] w-[480px] max-w-[90vw] z-[90] pointer-events-auto shadow-2xl">
           {inspectorPanel}
         </div>
       )}

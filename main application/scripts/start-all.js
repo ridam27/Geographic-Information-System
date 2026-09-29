@@ -133,9 +133,18 @@ const SERVICES = [
     name: 'CONS-BE',
     color: 'white',
     cwd: path.join(ROOT, 'GIS-Construction', 'backend'),
-    cmd: path.join(ROOT, 'GIS-Construction', 'backend', 'venv', 'Scripts', 'python.exe'),
+    cmd: isWin
+      ? path.join(ROOT, 'GIS-Construction', 'backend', 'venv', 'Scripts', 'python.exe')
+      : path.join(ROOT, 'GIS-Construction', 'backend', 'venv', 'bin', 'python'),
     args: ['main.py'],
     shell: false,
+  },
+  {
+    name: 'ENV-FE',
+    color: 'green',
+    cwd: path.join(ROOT, 'GIS-environment'),
+    cmd: 'npm',
+    args: ['run', 'dev', '--', '--port', '3008'],
   },
   {
     name: 'IOT-BE',

@@ -20,12 +20,8 @@ export async function fetchActiveStorms(): Promise<GlobalStorm[]> {
 
     try {
       // 1. Preferred: our own backend proxy (no CORS issue, server-to-server)
-      if (apiBase) {
-        response = await fetchWithTimeout(`https://geo-environment-backend.onrender.com/api/v1/gdacs/storms`, 2000);
-        if (!response.ok) throw new Error("Backend proxy fetch failed");
-      } else {
-        throw new Error("No backend base configured");
-      }
+      response = await fetchWithTimeout(`${apiBase}/api/v1/gdacs/storms`, 2000);
+      if (!response.ok) throw new Error("Backend proxy fetch failed");
     } catch (e) {
       console.warn("Backend GDACS proxy unavailable. Trying direct fetch...");
       try {

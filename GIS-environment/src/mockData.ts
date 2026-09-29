@@ -190,6 +190,74 @@ export const cities: CityInfo[] = [
   { id: 'gangtok',       name: 'Gangtok',      state: 'Sikkim',        country: 'India', coord: { lat: 27.3314, lng: 88.6138 }, baseTemp: 20, baseHumidity: 75, baseWindSpeed: 8,  basePressure: 1014 },
   { id: 'leh',           name: 'Leh',          state: 'Ladakh',        country: 'India', coord: { lat: 34.1526, lng: 77.5771 }, baseTemp: 16, baseHumidity: 35, baseWindSpeed: 14, basePressure: 1016 },
   { id: 'port_blair',    name: 'Port Blair',   state: 'Andaman UT',    country: 'India', coord: { lat: 11.6234, lng: 92.7265 }, baseTemp: 31, baseHumidity: 85, baseWindSpeed: 24, basePressure: 1010 },
+  // Global Cities
+  { id: 'new_york',      name: 'New York',     state: 'NY',            country: 'USA', coord: { lat: 40.7128, lng: -74.0060 }, baseTemp: 18, baseHumidity: 60, baseWindSpeed: 15, basePressure: 1013 },
+  { id: 'london',        name: 'London',       state: 'England',       country: 'UK', coord: { lat: 51.5074, lng: -0.1278 }, baseTemp: 15, baseHumidity: 70, baseWindSpeed: 18, basePressure: 1012 },
+  { id: 'tokyo',         name: 'Tokyo',        state: 'Tokyo',         country: 'Japan', coord: { lat: 35.6762, lng: 139.6503 }, baseTemp: 22, baseHumidity: 65, baseWindSpeed: 12, basePressure: 1011 },
+  { id: 'sydney',        name: 'Sydney',       state: 'NSW',           country: 'Australia', coord: { lat: -33.8688, lng: 151.2093 }, baseTemp: 24, baseHumidity: 60, baseWindSpeed: 20, basePressure: 1015 },
+  { id: 'paris',         name: 'Paris',        state: 'Ile-de-France', country: 'France', coord: { lat: 48.8566, lng: 2.3522 }, baseTemp: 16, baseHumidity: 65, baseWindSpeed: 14, basePressure: 1014 },
+  { id: 'beijing',       name: 'Beijing',      state: 'Beijing',       country: 'China', coord: { lat: 39.9042, lng: 116.4074 }, baseTemp: 20, baseHumidity: 50, baseWindSpeed: 10, basePressure: 1016 },
+  { id: 'moscow',        name: 'Moscow',       state: 'Moscow',        country: 'Russia', coord: { lat: 55.7558, lng: 37.6173 }, baseTemp: 10, baseHumidity: 70, baseWindSpeed: 15, basePressure: 1012 },
+  { id: 'rio',           name: 'Rio de Janeiro', state: 'Rio de Janeiro', country: 'Brazil', coord: { lat: -22.9068, lng: -43.1729 }, baseTemp: 28, baseHumidity: 75, baseWindSpeed: 12, basePressure: 1010 },
+  { id: 'cairo',         name: 'Cairo',        state: 'Cairo',         country: 'Egypt', coord: { lat: 30.0444, lng: 31.2357 }, baseTemp: 32, baseHumidity: 40, baseWindSpeed: 14, basePressure: 1008 },
+  { id: 'johannesburg',  name: 'Johannesburg', state: 'Gauteng',       country: 'South Africa', coord: { lat: -26.2041, lng: 28.0473 }, baseTemp: 20, baseHumidity: 55, baseWindSpeed: 10, basePressure: 1015 },
+  { id: 'los_angeles',   name: 'Los Angeles',  state: 'CA',            country: 'USA', coord: { lat: 34.0522, lng: -118.2437 }, baseTemp: 24, baseHumidity: 50, baseWindSpeed: 10, basePressure: 1014 },
+  { id: 'dubai',         name: 'Dubai',        state: 'Dubai',         country: 'UAE', coord: { lat: 25.2048, lng: 55.2708 }, baseTemp: 35, baseHumidity: 45, baseWindSpeed: 15, basePressure: 1005 },
+  { id: 'singapore',     name: 'Singapore',    state: 'Singapore',     country: 'Singapore', coord: { lat: 1.3521, lng: 103.8198 }, baseTemp: 30, baseHumidity: 80, baseWindSpeed: 10, basePressure: 1010 },
+  { id: 'toronto',       name: 'Toronto',      state: 'Ontario',       country: 'Canada', coord: { lat: 43.6510, lng: -79.3470 }, baseTemp: 12, baseHumidity: 65, baseWindSpeed: 18, basePressure: 1013 },
+  { id: 'buenos_aires',  name: 'Buenos Aires', state: 'Buenos Aires',  country: 'Argentina', coord: { lat: -34.6037, lng: -58.3816 }, baseTemp: 22, baseHumidity: 65, baseWindSpeed: 15, basePressure: 1012 },
+  { id: 'mexico_city',   name: 'Mexico City',  state: 'CDMX',          country: 'Mexico', coord: { lat: 19.4326, lng: -99.1332 }, baseTemp: 18, baseHumidity: 50, baseWindSpeed: 12, basePressure: 1018 },
+  { id: 'istanbul',      name: 'Istanbul',     state: 'Istanbul',      country: 'Turkey', coord: { lat: 41.0082, lng: 28.9784 }, baseTemp: 20, baseHumidity: 60, baseWindSpeed: 16, basePressure: 1011 },
+  { id: 'seoul',         name: 'Seoul',        state: 'Seoul',         country: 'South Korea', coord: { lat: 37.5665, lng: 126.9780 }, baseTemp: 18, baseHumidity: 60, baseWindSpeed: 10, basePressure: 1013 },
+  { id: 'jakarta',       name: 'Jakarta',      state: 'Jakarta',       country: 'Indonesia', coord: { lat: -6.2088, lng: 106.8456 }, baseTemp: 32, baseHumidity: 80, baseWindSpeed: 12, basePressure: 1010 },
+  { id: 'lagos',         name: 'Lagos',        state: 'Lagos',         country: 'Nigeria', coord: { lat: 6.5244, lng: 3.3792 }, baseTemp: 30, baseHumidity: 85, baseWindSpeed: 15, basePressure: 1011 },
+  // North America
+  { id: 'chicago',       name: 'Chicago',      state: 'IL',            country: 'USA', coord: { lat: 41.8781, lng: -87.6298 }, baseTemp: 15, baseHumidity: 65, baseWindSpeed: 18, basePressure: 1014 },
+  { id: 'houston',       name: 'Houston',      state: 'TX',            country: 'USA', coord: { lat: 29.7604, lng: -95.3698 }, baseTemp: 26, baseHumidity: 70, baseWindSpeed: 14, basePressure: 1013 },
+  { id: 'miami',         name: 'Miami',        state: 'FL',            country: 'USA', coord: { lat: 25.7617, lng: -80.1918 }, baseTemp: 28, baseHumidity: 75, baseWindSpeed: 16, basePressure: 1012 },
+  { id: 'vancouver',     name: 'Vancouver',    state: 'BC',            country: 'Canada', coord: { lat: 49.2827, lng: -123.1207 }, baseTemp: 14, baseHumidity: 80, baseWindSpeed: 12, basePressure: 1011 },
+  { id: 'montreal',      name: 'Montreal',     state: 'QC',            country: 'Canada', coord: { lat: 45.5017, lng: -73.5673 }, baseTemp: 12, baseHumidity: 70, baseWindSpeed: 15, basePressure: 1012 },
+  { id: 'guadalajara',   name: 'Guadalajara',  state: 'Jalisco',       country: 'Mexico', coord: { lat: 20.6597, lng: -103.3496 }, baseTemp: 22, baseHumidity: 55, baseWindSpeed: 10, basePressure: 1015 },
+  // South America
+  { id: 'sao_paulo',     name: 'Sao Paulo',    state: 'Sao Paulo',     country: 'Brazil', coord: { lat: -23.5505, lng: -46.6333 }, baseTemp: 24, baseHumidity: 70, baseWindSpeed: 14, basePressure: 1013 },
+  { id: 'lima',          name: 'Lima',         state: 'Lima',          country: 'Peru', coord: { lat: -12.0464, lng: -77.0428 }, baseTemp: 20, baseHumidity: 85, baseWindSpeed: 12, basePressure: 1011 },
+  { id: 'bogota',        name: 'Bogota',       state: 'Bogota',        country: 'Colombia', coord: { lat: 4.7110, lng: -74.0721 }, baseTemp: 15, baseHumidity: 75, baseWindSpeed: 10, basePressure: 1015 },
+  { id: 'santiago',      name: 'Santiago',     state: 'RM',            country: 'Chile', coord: { lat: -33.4489, lng: -70.6693 }, baseTemp: 18, baseHumidity: 60, baseWindSpeed: 12, basePressure: 1016 },
+  { id: 'caracas',       name: 'Caracas',      state: 'Capital',       country: 'Venezuela', coord: { lat: 10.4806, lng: -66.9036 }, baseTemp: 25, baseHumidity: 70, baseWindSpeed: 14, basePressure: 1012 },
+  // Europe
+  { id: 'berlin',        name: 'Berlin',       state: 'Berlin',        country: 'Germany', coord: { lat: 52.5200, lng: 13.4050 }, baseTemp: 14, baseHumidity: 65, baseWindSpeed: 15, basePressure: 1013 },
+  { id: 'madrid',        name: 'Madrid',       state: 'Madrid',        country: 'Spain', coord: { lat: 40.4168, lng: -3.7038 }, baseTemp: 20, baseHumidity: 55, baseWindSpeed: 12, basePressure: 1014 },
+  { id: 'rome',          name: 'Rome',         state: 'Lazio',         country: 'Italy', coord: { lat: 41.9028, lng: 12.4964 }, baseTemp: 22, baseHumidity: 60, baseWindSpeed: 14, basePressure: 1013 },
+  { id: 'amsterdam',     name: 'Amsterdam',    state: 'North Holland', country: 'Netherlands', coord: { lat: 52.3676, lng: 4.9041 }, baseTemp: 13, baseHumidity: 75, baseWindSpeed: 18, basePressure: 1011 },
+  { id: 'vienna',        name: 'Vienna',       state: 'Vienna',        country: 'Austria', coord: { lat: 48.2082, lng: 16.3738 }, baseTemp: 15, baseHumidity: 65, baseWindSpeed: 12, basePressure: 1014 },
+  { id: 'warsaw',        name: 'Warsaw',       state: 'Mazovia',       country: 'Poland', coord: { lat: 52.2297, lng: 21.0122 }, baseTemp: 14, baseHumidity: 70, baseWindSpeed: 14, basePressure: 1012 },
+  { id: 'kiev',          name: 'Kiev',         state: 'Kyiv',          country: 'Ukraine', coord: { lat: 50.4501, lng: 30.5234 }, baseTemp: 12, baseHumidity: 70, baseWindSpeed: 12, basePressure: 1013 },
+  // Asia (Additional)
+  { id: 'shanghai',      name: 'Shanghai',     state: 'Shanghai',      country: 'China', coord: { lat: 31.2304, lng: 121.4737 }, baseTemp: 22, baseHumidity: 75, baseWindSpeed: 14, basePressure: 1011 },
+  { id: 'hong_kong',     name: 'Hong Kong',    state: 'HK',            country: 'China', coord: { lat: 22.3193, lng: 114.1694 }, baseTemp: 26, baseHumidity: 80, baseWindSpeed: 16, basePressure: 1009 },
+  { id: 'bangkok',       name: 'Bangkok',      state: 'Bangkok',       country: 'Thailand', coord: { lat: 13.7563, lng: 100.5018 }, baseTemp: 30, baseHumidity: 75, baseWindSpeed: 12, basePressure: 1008 },
+  { id: 'manila',        name: 'Manila',       state: 'Metro Manila',  country: 'Philippines', coord: { lat: 14.5995, lng: 120.9842 }, baseTemp: 29, baseHumidity: 80, baseWindSpeed: 14, basePressure: 1009 },
+  { id: 'ho_chi_minh',   name: 'Ho Chi Minh',  state: 'HCM',           country: 'Vietnam', coord: { lat: 10.8231, lng: 106.6297 }, baseTemp: 28, baseHumidity: 75, baseWindSpeed: 12, basePressure: 1010 },
+  { id: 'kuala_lumpur',  name: 'Kuala Lumpur', state: 'KL',            country: 'Malaysia', coord: { lat: 3.1390, lng: 101.6869 }, baseTemp: 28, baseHumidity: 80, baseWindSpeed: 10, basePressure: 1009 },
+  { id: 'taipei',        name: 'Taipei',       state: 'Taipei',        country: 'Taiwan', coord: { lat: 25.0330, lng: 121.5654 }, baseTemp: 24, baseHumidity: 75, baseWindSpeed: 15, basePressure: 1012 },
+  { id: 'osaka',         name: 'Osaka',        state: 'Osaka',         country: 'Japan', coord: { lat: 34.6937, lng: 135.5023 }, baseTemp: 20, baseHumidity: 65, baseWindSpeed: 14, basePressure: 1013 },
+  { id: 'karachi',       name: 'Karachi',      state: 'Sindh',         country: 'Pakistan', coord: { lat: 24.8607, lng: 67.0011 }, baseTemp: 32, baseHumidity: 65, baseWindSpeed: 18, basePressure: 1007 },
+  { id: 'dhaka',         name: 'Dhaka',        state: 'Dhaka',         country: 'Bangladesh', coord: { lat: 23.8103, lng: 90.4125 }, baseTemp: 29, baseHumidity: 75, baseWindSpeed: 14, basePressure: 1008 },
+  { id: 'riyadh',        name: 'Riyadh',       state: 'Riyadh',        country: 'Saudi Arabia', coord: { lat: 24.7136, lng: 46.6753 }, baseTemp: 35, baseHumidity: 20, baseWindSpeed: 12, basePressure: 1005 },
+  { id: 'tehran',        name: 'Tehran',       state: 'Tehran',        country: 'Iran', coord: { lat: 35.6892, lng: 51.3890 }, baseTemp: 22, baseHumidity: 30, baseWindSpeed: 10, basePressure: 1012 },
+  { id: 'baghdad',       name: 'Baghdad',      state: 'Baghdad',       country: 'Iraq', coord: { lat: 33.3128, lng: 44.3615 }, baseTemp: 32, baseHumidity: 25, baseWindSpeed: 14, basePressure: 1008 },
+  // Africa
+  { id: 'nairobi',       name: 'Nairobi',      state: 'Nairobi',       country: 'Kenya', coord: { lat: -1.2921, lng: 36.8219 }, baseTemp: 24, baseHumidity: 60, baseWindSpeed: 15, basePressure: 1014 },
+  { id: 'casablanca',    name: 'Casablanca',   state: 'Casablanca',    country: 'Morocco', coord: { lat: 33.5731, lng: -7.5898 }, baseTemp: 22, baseHumidity: 70, baseWindSpeed: 14, basePressure: 1015 },
+  { id: 'addis_ababa',   name: 'Addis Ababa',  state: 'Addis Ababa',   country: 'Ethiopia', coord: { lat: 9.0320, lng: 38.7480 }, baseTemp: 20, baseHumidity: 65, baseWindSpeed: 12, basePressure: 1016 },
+  { id: 'kinshasa',      name: 'Kinshasa',     state: 'Kinshasa',      country: 'DRC', coord: { lat: -4.4419, lng: 15.2663 }, baseTemp: 28, baseHumidity: 75, baseWindSpeed: 10, basePressure: 1011 },
+  { id: 'dakar',         name: 'Dakar',        state: 'Dakar',         country: 'Senegal', coord: { lat: 14.7167, lng: -17.4677 }, baseTemp: 26, baseHumidity: 70, baseWindSpeed: 16, basePressure: 1013 },
+  // Oceania
+  { id: 'melbourne',     name: 'Melbourne',    state: 'VIC',           country: 'Australia', coord: { lat: -37.8136, lng: 144.9631 }, baseTemp: 20, baseHumidity: 60, baseWindSpeed: 18, basePressure: 1014 },
+  { id: 'brisbane',      name: 'Brisbane',     state: 'QLD',           country: 'Australia', coord: { lat: -27.4698, lng: 153.0251 }, baseTemp: 25, baseHumidity: 65, baseWindSpeed: 15, basePressure: 1015 },
+  { id: 'perth',         name: 'Perth',        state: 'WA',            country: 'Australia', coord: { lat: -31.9505, lng: 115.8605 }, baseTemp: 26, baseHumidity: 50, baseWindSpeed: 18, basePressure: 1014 },
+  { id: 'auckland',      name: 'Auckland',     state: 'Auckland',      country: 'New Zealand', coord: { lat: -36.8485, lng: 174.7633 }, baseTemp: 18, baseHumidity: 75, baseWindSpeed: 20, basePressure: 1012 },
+  { id: 'wellington',    name: 'Wellington',   state: 'Wellington',    country: 'New Zealand', coord: { lat: -41.2865, lng: 174.7762 }, baseTemp: 15, baseHumidity: 80, baseWindSpeed: 25, basePressure: 1011 },
 ];
 
 
@@ -323,7 +391,7 @@ export function calculateCityWeather(
     rainfall     = liveData.hourly.precipitation[ti] || 0;
     cloudCover   = liveData.hourly.cloudCover[ti];
     const wc     = liveData.hourly.weatherCode[ti];
-    lightningProb = wc >= 95 ? 80 + Math.random() * 20 : 0;
+    lightningProb = wc >= 95 ? Math.round(80 + ((ti * 7 + Math.abs(Math.round(city.coord.lat * 100))) % 18)) : 0;
 
   } else if (historicalData) {
     temp         = historicalData.temp;

@@ -28,7 +28,7 @@ export class ReportService {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
     doc.setTextColor(15, 23, 42);
-    doc.text('AEROTEMPEST WEATHER INTELLIGENCE REPORT', 14, 20);
+    doc.text('GEOLITH - AI WEATHER & EARTH SERVICES PLATFORM', 14, 20);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
