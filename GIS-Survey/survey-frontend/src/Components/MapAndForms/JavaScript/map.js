@@ -69,39 +69,7 @@ function describeGeoError(err) {
   }
 }
 
-// Runs one navigator.geolocation.watchPosition attempt with the given
-// options and reports back via onSuccess/onFail.
-function watchOnce(options, onSuccess, onFail) {
-  let bestAccuracy = Infinity;
-  let attempts = 0;
-  const maxAttempts = 5;
-  const watchId = navigator.geolocation.watchPosition(
-    (position) => {
-      attempts++;
-      const currentAccuracy = position.coords.accuracy;
-      if (currentAccuracy < bestAccuracy) {
-        bestAccuracy = currentAccuracy;
-        onSuccess({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          altitude: position.coords.altitude,
-          altitudeAccuracy: position.coords.altitudeAccuracy,
-          heading: position.coords.heading,
-          speed: position.coords.speed,
-        });
-      }
-      if (attempts >= maxAttempts || currentAccuracy < 10) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    },
-    (error) => {
-      navigator.geolocation.clearWatch(watchId);
-      onFail(error);
-    },
-    options
-  );
-}
+
 
 export default function MapComponent() {
   const [location, setLocation] = useState(null);
@@ -141,6 +109,7 @@ export default function MapComponent() {
   const searchAbortRef = useRef(null);
   const kmzInputRef = useRef(null);
   const kmzLayerRef = useRef(null);
+  const watchIdRef = useRef(null);
 
   const { isAuthenticated, authLoading, logout, user } = useAuth();
   const navigate = useNavigate();
@@ -232,33 +201,86 @@ export default function MapComponent() {
   };
 }
 
-  // Most desktops/laptops have no GPS chip, so a GPS-preferring
-  // (enableHighAccuracy) request routinely fails or times out on them.
-  // Try that first for the best possible fix, then fall back to a
-  // network/Wi-Fi based request (which desktops resolve far more
-  // reliably) before giving up and reporting an error.
-  const fetchAccurateLocation = useCallback((onSuccess, onError) => {
+  const stopLocationWatch = useCallback(() => {
+    if (watchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+  }, []);
+
+  const startRealtimeLocationWatch = useCallback((onFirstSuccess, onError) => {
     if (!navigator.geolocation) {
-      onError('Geolocation is not supported by your browser');
+      if (onError) onError('Geolocation is not supported by your browser');
       return;
     }
 
-    watchOnce(
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
-      onSuccess,
-      (firstError) => {
-        if (firstError.code === firstError.PERMISSION_DENIED) {
-          onError(firstError);
-          return;
-        }
-        watchOnce(
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 },
-          onSuccess,
-          (secondError) => onError(secondError)
-        );
+    stopLocationWatch();
+
+    let hasReceivedFix = false;
+
+    const handleSuccess = (position) => {
+      const newLoc = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: position.coords.accuracy ?? 10,
+        altitude: position.coords.altitude,
+        altitudeAccuracy: position.coords.altitudeAccuracy,
+        heading: position.coords.heading,
+        speed: position.coords.speed,
+      };
+
+      setLocation(newLoc);
+      setUsingFallbackLocation(false);
+      setGeoErrorReason(null);
+      setLoading(false);
+      setError(null);
+
+      if (!hasReceivedFix) {
+        hasReceivedFix = true;
+        if (onFirstSuccess) onFirstSuccess(newLoc);
       }
+    };
+
+    const handleError = (geoError) => {
+      if (geoError && geoError.code === 1) {
+        if (onError) onError(geoError);
+        return;
+      }
+      if (!hasReceivedFix) {
+        navigator.geolocation.getCurrentPosition(
+          handleSuccess,
+          (err2) => {
+            if (onError) onError(err2 || geoError);
+          },
+          { enableHighAccuracy: false, timeout: 12000, maximumAge: 30000 }
+        );
+      } else {
+        console.warn('Realtime GPS update error:', geoError);
+      }
+    };
+
+    // 1. Get immediate position fix
+    navigator.geolocation.getCurrentPosition(
+      handleSuccess,
+      (firstErr) => {
+        handleError(firstErr);
+        if (firstErr && firstErr.code === 1) return;
+
+        // 2. Keep continuous watch position alive for real-time tracking
+        try {
+          const watchId = navigator.geolocation.watchPosition(
+            handleSuccess,
+            handleError,
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 1000 }
+          );
+          watchIdRef.current = watchId;
+        } catch (e) {
+          console.error('Failed to start watchPosition:', e);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
-  }, []);
+  }, [stopLocationWatch]);
 
   // Jumps the map + "Current Coordinates" card to an exact point, whether it
   // came from a Nominatim place-name match or from directly-typed "lat, lng".
@@ -495,10 +517,6 @@ export default function MapComponent() {
 
     setLoading(true);
 
-    // Safety net: if GPS doesn't respond in time, use fallback so the
-    // app doesn't get stuck on the loading screen. Longer than the two
-    // internal geolocation attempts combined (8s + 10s) so they get a
-    // fair chance to resolve first.
     const fallbackTimer = setTimeout(() => {
       setLocation((prev) => {
         if (prev) return prev; // GPS already succeeded, ignore fallback
@@ -508,16 +526,11 @@ export default function MapComponent() {
         setError(null);
         return FALLBACK_LOCATION;
       });
-    }, 20000);
+    }, 15000);
 
-    fetchAccurateLocation(
+    startRealtimeLocationWatch(
       (newLocation) => {
         clearTimeout(fallbackTimer);
-        setUsingFallbackLocation(false);
-        setGeoErrorReason(null);
-        setLocation(newLocation);
-        setLoading(false);
-        setError(null);
       },
       (geoError) => {
         clearTimeout(fallbackTimer);
@@ -531,8 +544,11 @@ export default function MapComponent() {
       }
     );
 
-    return () => clearTimeout(fallbackTimer);
-  }, [fetchAccurateLocation]);
+    return () => {
+      clearTimeout(fallbackTimer);
+      stopLocationWatch();
+    };
+  }, [startRealtimeLocationWatch, stopLocationWatch]);
 
   // --- (IS useEffect MEIN BADLAV HAI) ---
   useEffect(() => {
@@ -709,11 +725,10 @@ L.tileLayer(
   const refreshLocation = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetchAccurateLocation(
+    startRealtimeLocationWatch(
       (newLocation) => {
         setUsingFallbackLocation(false);
         setGeoErrorReason(null);
-        setLocation(newLocation);
         setLoading(false);
         setError(null);
         if (mapInstanceRef.current) {
@@ -728,7 +743,7 @@ L.tileLayer(
         setLoading(false);
       }
     );
-  }, [fetchAccurateLocation]);
+  }, [startRealtimeLocationWatch]);
 
   const handleProceedClick = () => {
     if (!location) {

@@ -109,13 +109,6 @@ const SERVICES = [
     shell: false,
   },
   {
-    name: 'WILD-BE',
-    color: 'red',
-    cwd: path.join(ROOT, 'GIS-Wild-life', 'backend'),
-    cmd: 'npm',
-    args: ['run', 'start'],
-  },
-  {
     name: 'WILD-FE',
     color: 'red',
     cwd: path.join(ROOT, 'GIS-Wild-life'),

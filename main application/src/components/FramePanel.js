@@ -110,6 +110,7 @@ export default function FramePanel({ module, src, ssoError, onRetry }) {
               className="framepanel__iframe"
               onLoad={handleLoad}
               referrerPolicy="no-referrer-when-downgrade"
+              allow="geolocation *; camera *; microphone *; fullscreen *; display-capture *"
             />
           </>
         )}
