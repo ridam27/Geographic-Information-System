@@ -181,10 +181,17 @@ function launch(service) {
   const sysRoot = process.env.SystemRoot || process.env.SYSTEMROOT || 'C:\\Windows';
   const comSpec = process.env.ComSpec || process.env.COMSPEC || path.join(sysRoot, 'System32', 'cmd.exe');
 
+  // Prevent sub-modules (VIEWER-FE, SURVEY-FE, WILD-FE, CONS-FE, ENV-FE, etc.)
+  // from opening unwanted browser tabs. ONLY MAIN-FE (port 3000) opens the browser.
+  const env = { ...process.env, ComSpec: comSpec, COMSPEC: comSpec };
+  if (service.name !== 'MAIN-FE') {
+    env.BROWSER = 'none';
+  }
+
   const child = spawn(command, service.args, {
     cwd: service.cwd,
     shell: useShell,
-    env: { ...process.env, ComSpec: comSpec, COMSPEC: comSpec },
+    env,
   });
   child.pid && children.push(child);
 
