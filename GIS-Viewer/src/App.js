@@ -3,10 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import './App.css';
-import { useAuth } from './context/AuthContext'; // <-- IMPORT THE HOOK
-import HeroSection from './Pages/HeroSection';
-import Footer from './Pages/Footer';
-import CardContainer from './Pages/CardContainer';
+import { useAuth } from './context/AuthContext';
 import LoginPage from './Components/LoginPage';
 import SignupPage from './Components/SignupPage';
 import ForgotPasswordPage from './Components/ForgotPasswordPage';
@@ -16,7 +13,7 @@ import UserProfile from './Components/Userprofile';
 
 function App() {
   const [progress, setProgress] = useState(0);
-  const { isAuthenticated, loading } = useAuth(); // <-- USE THE CONTEXT
+  const { isAuthenticated, loading } = useAuth();
 
   const handleButtonClick = () => {
     setProgress(30);
@@ -32,11 +29,11 @@ function App() {
 
   // Show a loading spinner or null while checking for authentication
   if (loading) {
-    return <div>Loading...</div>; // Or a proper spinner component
+    return <div>Loading...</div>;
   }
 
   return (
-    <Router >
+    <Router>
       <TopLoadingBar
         progress={progress}
         color="#ffc107"
@@ -44,15 +41,14 @@ function App() {
         onLoaderFinished={() => setProgress(0)}
       />
       <Routes>
-        <Route path="/" element={<HeroSection handleButtonClick={handleButtonClick} />} />
+        <Route path="/" element={<Navigate to="/DashboardApp" replace />} />
         <Route path="/login" element={!isAuthenticated ? <LoginPage handleButtonClick={handleButtonClick} /> : <Navigate to="/DashboardApp" />} />
         <Route path="/signup" element={<SignupPage handleButtonClick={handleButtonClick} />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage handleButtonClick={handleButtonClick} />} />
         <Route path="/DashboardApp" element={isAuthenticated ? <DashboardApp /> : <Navigate to="/login" />} />
         <Route path="/UserProfile" element={isAuthenticated ? <UserProfile /> : <Navigate to="/login" />} />
+        <Route path="*" element={<Navigate to="/DashboardApp" replace />} />
       </Routes>
-      <CardContainer />
-      <Footer />
     </Router>
   );
 }

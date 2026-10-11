@@ -426,37 +426,20 @@ const MyMap = () => {
     <>
       {map ? <DisplayPosition map={map} position={position} setPosition={setPosition} /> : null}
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#f9f9f9', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', padding: '20px', marginTop: 0 }} className="upload-shapefile">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-          <label style={{ marginRight: '20px', fontSize: '16px' }}>Upload ShapeFile(.zip):</label>
+      <div className="upload-shapefile">
+        <div className="upload-shapefile-inner">
+          <label className="upload-shapefile-label">Upload ShapeFile(.zip):</label>
           <input 
             type="file" 
             accept=".zip" 
             onChange={handleFile} 
             className="inputfile" 
-            style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', backgroundColor: '#fff' }} 
           />
           <button
             className="map-layers-button"
             onClick={() => setShowMapLayers(!showMapLayers)}
-            style={{ 
-              marginLeft: '20px', 
-              padding: '10px 20px', 
-              border: 'none', 
-              borderRadius: '4px', 
-              backgroundColor: '#2196f9', 
-              color: '#fff', 
-              fontSize: '16px', 
-              cursor: 'pointer', 
-              transition: 'background-color 0.3s ease', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px'
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#2196f9')}
-            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#2196f3')}
           >
-            Map Layers <span style={{ fontSize: '16px' }}>▼</span>
+            Map Layers <span style={{ fontSize: '14px' }}>▼</span>
           </button>
         </div>
       </div>

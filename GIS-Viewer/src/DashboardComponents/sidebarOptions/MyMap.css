@@ -1,68 +1,180 @@
+/* ShapeFile Extractor Panel Styling */
+.upload-shapefile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 16px 24px;
+  margin: 10px 15px 15px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.upload-shapefile-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.upload-shapefile-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.inputfile {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background-color: #f8fafc;
+  color: #1e293b;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.inputfile:focus {
+  border-color: #2196f3;
+}
+
+.map-layers-button {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 6px;
+  background-color: #2196f3;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.25);
+}
+
+.map-layers-button:hover {
+  background-color: #1976d2;
+  box-shadow: 0 6px 16px rgba(25, 118, 210, 0.35);
+}
+
 .map-layers-dropdown {
-    background-color: white; /* Set the background color to white */
-    border: 1px solid #ccc; /* Optional: Add a border for better visibility */
-    border-radius: 4px; /* Optional: Add rounded corners */
-    padding: 10px; /* Add some padding around the dropdown */
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Optional: Add a subtle shadow */
-    max-width: 300px;
-    max-height: 400px;
-    overflow-y: auto;
-    position: relative;
-    left: 46.5%;
-    margin-top: 5px;
-    position: absolute; /* Position the dropdown absolutely */
-    z-index: 999;
-  }
-  
-  .map-layers-options {
-    display: flex;
-    flex-direction: column; /* Align items in a column */
-    gap: 8px; /* Add some spacing between items */
-  }
-  
-  .map-layers-options label {
-    display: flex; /* Ensure the label is treated as a flex container */
-    align-items: center; /* Vertically align checkbox and text */
-    cursor: pointer; /* Make it clear items are clickable */
-    padding: 4px 8px; /* Add padding to the label for better click area */
-    border-radius: 4px; /* Optional: Rounded corners for each item */
-  }
-  
-  .map-layers-options label:hover {
-    background-color: #f9f9f9; /* Optional: Highlight item on hover */
-  }
-  
-  .map-layers-options input[type="checkbox"] {
-    margin-right: 8px; /* Space between the checkbox and text */
-  }
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  max-width: 320px;
+  max-height: 400px;
+  overflow-y: auto;
+  position: absolute;
+  top: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
 
-  .map-layer-label{
-    text-align: left;
-  }
+.map-layers-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
+.map-layers-options label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #334155;
+  transition: background-color 0.2s ease;
+}
 
-  
-  #map {
-    width: 100%;
-    height: 100%;
-    /* object-fit: cover;  */
-  }
-  
-  .lat-long{
-    margin-top: 5px;
-  }
-  
-  .upload-shapefile{
-    margin-bottom: 5px;
-  }
-  
-  .heading{
-    margin-top: -8px;
-    margin-bottom: 5px;
-  }
-  
-  
-  
-  
-  
-  
+.map-layers-options label:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.map-layers-options input[type="checkbox"] {
+  margin-right: 10px;
+  accent-color: #2196f3;
+}
+
+.map-layer-label {
+  text-align: left;
+}
+
+.lat-long {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.92);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(6px);
+}
+
+.lat-long button {
+  margin-left: 10px;
+  padding: 4px 8px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* =========================================================
+   DARK MODE STYLING FOR SHAPEFILE EXTRACTOR
+   ========================================================= */
+body.dark-mode .upload-shapefile {
+  background-color: #1e1e2d !important;
+  border-color: #2a2a3e !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-mode .upload-shapefile-label {
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .inputfile {
+  background-color: #252538 !important;
+  border-color: #363650 !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .map-layers-dropdown {
+  background-color: #1e1e2d !important;
+  border-color: #2a2a3e !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode .map-layers-options label {
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .map-layers-options label:hover {
+  background-color: #2a2a3e !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .lat-long {
+  background-color: rgba(30, 30, 45, 0.94) !important;
+  border-color: #363650 !important;
+  color: #f3f4f6 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+}

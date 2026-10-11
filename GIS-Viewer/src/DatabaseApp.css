@@ -1,8 +1,9 @@
 body {
-  font-family: "Roboto", sans-serif;
+  font-family: "Roboto", "Inter", sans-serif;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #root {
@@ -10,12 +11,309 @@ body {
   flex-direction: column;
   height: 100vh;
 }
+
 .app-container {
   display: flex;
   min-height: 100vh;
-  transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .app-content {
   flex: 1;
+}
+
+/* =========================================================
+   UNIFIED MODERN DARK MODE DESIGN SYSTEM
+   ========================================================= */
+
+body.dark-mode,
+.app-container.dark-mode {
+  background-color: #161622 !important;
+  color: #f3f4f6 !important;
+}
+
+/* 1. Map Canvas Controls & Popups (Map Tiles Stay 100% Original & Untouched) */
+body.dark-mode .leaflet-popup-content-wrapper,
+body.dark-mode .leaflet-popup-tip {
+  background-color: #1e1e2d !important;
+  color: #f3f4f6 !important;
+  border: 1px solid #2a2a3e !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+}
+
+body.dark-mode .leaflet-control-zoom a,
+body.dark-mode .leaflet-control-layers,
+body.dark-mode .leaflet-bar a {
+  background-color: #1e1e2d !important;
+  color: #f3f4f6 !important;
+  border-color: #2a2a3e !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dark-mode .leaflet-control-zoom a:hover {
+  background-color: #2a2a3e !important;
+  color: #60a5fa !important;
+}
+
+/* 2. Main Dashboard Sidebar & Floating Sidebar Controls */
+body.dark-mode .sidebar-content,
+body.dark-mode .sidebar {
+  background-color: #1e1e2d !important;
+  color: #f3f4f6 !important;
+  border-right: 1px solid #2a2a3e !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dark-mode .sidebar-title,
+body.dark-mode .sectionHeader {
+  color: #f3f4f6 !important;
+  border-bottom: 1px solid #2a2a3e !important;
+}
+
+body.dark-mode .sidebar-option-item {
+  color: #9ca3af !important;
+  border-radius: 8px !important;
+  margin: 2px 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+body.dark-mode .sidebar-option-item:hover {
+  background-color: #252538 !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .sidebar-option-item.selected {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+}
+
+body.dark-mode .sidebar-toggle-button {
+  background-color: #1e1e2d !important;
+  color: #60a5fa !important;
+  border: 1px solid #2a2a3e !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dark-mode .sidebar-toggle-button:hover {
+  background-color: #252538 !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .floating-icons-container {
+  background-color: rgba(30, 30, 45, 0.94) !important;
+  border: 1px solid #2a2a3e !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+body.dark-mode .floating-icon-button {
+  color: #9ca3af !important;
+}
+
+body.dark-mode .floating-icon-button:hover,
+body.dark-mode .floating-icon-button.selected {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+
+/* 3. Location Finder Module Dark Mode */
+body.dark-mode .input-container {
+  background-color: rgba(30, 30, 45, 0.94) !important;
+  color: #f3f4f6 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+  border: 1px solid #2a2a3e !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+body.dark-mode .input-container input {
+  background-color: #252538 !important;
+  color: #f3f4f6 !important;
+  border-color: #363650 !important;
+}
+
+body.dark-mode .input-container button.btn-go {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+}
+
+body.dark-mode .input-container button.btn-go:hover {
+  background-color: #1d4ed8 !important;
+}
+
+body.dark-mode .right-details-panel {
+  background-color: rgba(30, 30, 45, 0.95) !important;
+  border-color: #2a2a3e !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .panel-header {
+  background-color: #1e1e2d !important;
+  border-bottom-color: #2a2a3e !important;
+}
+
+body.dark-mode .panel-header h3 {
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .coord-label {
+  color: #9ca3af !important;
+}
+
+body.dark-mode .coord-value {
+  color: #60a5fa !important;
+}
+
+body.dark-mode .bottom-left-stats-card {
+  background-color: rgba(30, 30, 45, 0.95) !important;
+  border-color: #2a2a3e !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .stats-card-header {
+  background-color: #1e1e2d !important;
+  border-bottom-color: #2a2a3e !important;
+}
+
+body.dark-mode .stats-card-title {
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .stats-label {
+  color: #9ca3af !important;
+}
+
+body.dark-mode .stats-val {
+  color: #60a5fa !important;
+}
+
+body.dark-mode .zoom-indicator-tag {
+  background-color: rgba(30, 30, 45, 0.92) !important;
+  color: #60a5fa !important;
+  border-color: #2a2a3e !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* 4. ShapeFile Extractor Dark Mode */
+body.dark-mode .upload-shapefile {
+  background-color: #1e1e2d !important;
+  border-color: #2a2a3e !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-mode .upload-shapefile-label {
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .inputfile {
+  background-color: #252538 !important;
+  border-color: #363650 !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .map-layers-dropdown {
+  background-color: #1e1e2d !important;
+  border-color: #2a2a3e !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode .map-layers-options label {
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .map-layers-options label:hover {
+  background-color: #252538 !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .lat-long {
+  background-color: rgba(30, 30, 45, 0.94) !important;
+  border-color: #363650 !important;
+  color: #f3f4f6 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* 5. Video Tracker Controls Dark Mode */
+body.dark-mode .control-panel-container {
+  background-color: #161622 !important;
+}
+
+body.dark-mode .map-view-wrapper {
+  border-color: #2a2a3e !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-mode .controls-wrapper {
+  background-color: #1e1e2d !important;
+  border-color: #2a2a3e !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+}
+
+body.dark-mode .controls-title,
+body.dark-mode .section-title {
+  color: #f3f4f6 !important;
+  border-bottom-color: #2a2a3e !important;
+}
+
+body.dark-mode .video-file-name,
+body.dark-mode .upload-file-name,
+body.dark-mode .input-grid label,
+body.dark-mode .checkbox-label,
+body.dark-mode .status-footer {
+  color: #9ca3af !important;
+  border-top-color: #2a2a3e !important;
+}
+
+body.dark-mode .input-field,
+body.dark-mode select {
+  background-color: #252538 !important;
+  border-color: #363650 !important;
+  color: #f3f4f6 !important;
+}
+
+/* 6. TIF / KML / KMZ Tool Panels Dark Mode */
+body.dark-mode .map-ui-container .sidebar,
+body.dark-mode .map-ui-container .sidebar-content {
+  background-color: #1e1e2d !important;
+  color: #f3f4f6 !important;
+  border-right: 1px solid #2a2a3e !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dark-mode .layerItem {
+  background-color: #252538 !important;
+  color: #f3f4f6 !important;
+  border: 1px solid #363650 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+body.dark-mode .layerItemActive {
+  background-color: #1e3a5f !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dark-mode .uploadButton,
+body.dark-mode .selected-file {
+  background-color: #252538 !important;
+  border-color: #363650 !important;
+  color: #60a5fa !important;
+}
+
+body.dark-mode .badge {
+  background-color: #1e3a5f !important;
+  color: #60a5fa !important;
+}
+
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6 {
+  color: #f3f4f6 !important;
 }

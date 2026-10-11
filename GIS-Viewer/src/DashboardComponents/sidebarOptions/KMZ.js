@@ -42,7 +42,6 @@ const styles = {
   },
   sidebar: {
     width: '320px',
-    backgroundColor: '#ffffff',
     boxShadow: '0 0 20px rgba(0, 0, 0, 0.1)',
     overflowY: 'auto',
     height: '100%',
@@ -62,7 +61,6 @@ const styles = {
     margin: 0,
     fontSize: '18px',
     fontWeight: '600',
-    color: '#333',
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
@@ -72,13 +70,11 @@ const styles = {
   },
   layerItem: {
     marginBottom: '16px',
-    backgroundColor: '#f8f9fa',
     borderRadius: '8px',
     padding: '15px',
     transition: 'all 0.2s ease',
   },
   layerItemActive: {
-    backgroundColor: '#e9f7fe',
     boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
   },
   layerHeader: {

@@ -3,268 +3,324 @@
   box-sizing: border-box;
 }
 
-/* Main container */
-.control-panel-container {
-  height: 100vh;
-  display: flex;
-  padding: 8px;
-  gap: 8px;
-  background: #f8f8f8;
-  font-size: 13px;
-  font-family: Arial, sans-serif; /* Added a default font */
+/* Layout containers */
+.responsive-tracker-container,
+.video-tracker-container {
+  display: flex !important;
+  width: 100% !important;
+  height: calc(100vh - 64px) !important;
+  overflow: hidden !important;
+  background-color: #f1f5f9;
+  color: #1e293b;
+  transition: all 0.3s ease;
 }
 
-/* Map specific - Wider map */
-.map-view-wrapper {
-  flex: 2; /* Giving more flex grow to the map */
-  height: 100%;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+.left-panel-class {
+  width: 70% !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: relative !important;
+  border-right: 1px solid #e2e8f0;
 }
 
-.map-container-inner {
-  height: 100%;
-  width: 100%;
+.tracker-map-wrapper {
+  flex: 1 !important;
+  position: relative !important;
+  z-index: 0 !important;
+  height: 100% !important;
 }
 
-/* Right-side controls - More compact and potentially side-by-side */
-.controls-wrapper {
-  flex: 1; /* Giving less flex grow to the controls */
-  height: 100%;
-  display: flex;
-  flex-direction: column; /* Default to column for consistency, will change later */
-  background: white;
-  border-radius: 6px;
-  padding: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  overflow: hidden; /* Prevent children from overflowing rounded corners */
+.tracker-floating-controls {
+  position: absolute !important;
+  top: 20px !important;
+  left: 20px !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
 }
 
-.controls-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-  flex-shrink: 0;
+.tracker-icon-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05) !important;
+  color: #1e293b !important;
 }
 
-.controls-title {
-  margin: 0;
-  font-size: 15px; /* Slightly smaller title */
+.tracker-command-deck {
+  height: 240px !important;
+  background-color: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  padding: 16px !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr 1fr 1fr !important;
+  gap: 16px !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03) !important;
+  z-index: 10 !important;
+  overflow-y: auto !important;
 }
 
-.video-player {
-  width: 100%;
-  height: 140px; /* Smaller video height */
-  border-radius: 4px;
-  background: #000;
-  flex-shrink: 0;
+.tracker-card {
+  background-color: #f8fafc;
+  border-radius: 10px !important;
+  padding: 12px !important;
+  border: 1px solid #e2e8f0;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
 }
 
-.video-file-name {
-  margin: 4px 0;
-  color: #666;
-  font-size: 11px; /* Smaller font size */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-shrink: 0;
+.tracker-card-header {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #64748b;
+  margin-bottom: 4px !important;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 6px !important;
 }
 
-/* Scrollable area */
-.scroll-area {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 6px;
-  margin-top: 8px;
+.tracker-input-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 13px !important;
 }
 
-/* Form Elements */
-.input-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+.tracker-input {
+  width: 100% !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  border: 1px solid #cbd5e1;
+  font-size: 13px !important;
+  outline: none !important;
+  background-color: #ffffff;
+  color: #1e293b;
 }
 
-.input-grid label {
-  display: block;
-  margin-bottom: 2px; /* Reduced margin */
-  font-size: 12px; /* Smaller label font */
+.tracker-upload-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  font-size: 12px !important;
+  padding: 6px !important;
+  background-color: #ffffff;
+  border-radius: 4px !important;
+  border: 1px solid #e2e8f0;
 }
 
-.input-field {
-  width: 100%;
-  padding: 3px; /* Smaller padding */
-  border: 1px solid #ccc;
-  border-radius: 3px; /* Smaller border radius */
-  font-size: 12px; /* Smaller input font */
+.tracker-status-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background-color: #cbd5e1;
 }
 
-.export-input-folder {
-  margin-bottom: 6px;
+.tracker-status-dot.active {
+  background-color: #10b981 !important;
 }
 
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  margin-top: 6px;
-  cursor: pointer;
-  font-size: 12px; /* Smaller checkbox label font */
+.tracker-plus-btn {
+  cursor: pointer !important;
+  border: 1px solid #ddd !important;
+  border-radius: 3px !important;
+  padding: 1px 6px !important;
+  background-color: #ffffff;
 }
 
-.checkbox-input {
-  margin-right: 4px; /* Smaller margin */
-  transform: scale(0.9); /* Slightly smaller checkbox */
+.tracker-btn {
+  width: 100% !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: white !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
 }
 
-.section-title {
-  margin-top: 8px; /* Reduced margin */
-  margin-bottom: 6px; /* Reduced margin */
-  font-size: 13px; /* Smaller title */
-  border-bottom: 1px solid #eee;
-  padding-bottom: 3px; /* Reduced padding */
+.tracker-btn-primary {
+  background-color: #2563eb !important;
 }
 
-/* Buttons */
-.btn {
-  padding: 6px 8px; /* Smaller padding */
-  width: 100%;
-  margin-top: 5px; /* Reduced margin */
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 3px; /* Smaller border radius */
-  font-size: 12px; /* Smaller font size */
-  cursor: pointer;
-  transition: background 0.2s ease; /* Smooth transition */
+.tracker-btn-secondary {
+  background-color: #64748b !important;
 }
 
-.btn:hover {
-  background: #0056b3;
+.tracker-btn-dark {
+  background-color: #1e293b !important;
 }
 
-.btn-google-map {
-  padding: 4px 8px; /* Even smaller padding */
-  background: #28a745;
-  font-size: 11px; /* Even smaller font size */
-  width: auto;
-  margin-top: 0;
+.right-panel-class {
+  width: 30% !important;
+  height: 100% !important;
+  background-color: #ffffff;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 20px !important;
+  gap: 20px !important;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.03) !important;
+  overflow-y: auto !important;
 }
 
-.btn-google-map:hover {
-  background: #218838;
+.tracker-stats-header {
+  margin: 0 !important;
+  font-size: 14px !important;
+  color: #2563eb;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
 }
 
-/* Uploads */
-.upload-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px; /* Reduced margin */
+.tracker-stat-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
 }
 
-.btn-upload-label {
-  padding: 5px 8px; /* Smaller padding */
-  background: #007bff;
-  color: white;
-  border-radius: 3px; /* Smaller border radius */
-  cursor: pointer;
-  font-size: 12px; /* Smaller font size */
-  white-space: nowrap;
-  transition: background 0.2s ease;
+.tracker-stat-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px !important;
+  padding: 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
 }
 
-.btn-upload-label:hover {
-  background: #0056b3;
+.tracker-stat-label {
+  font-size: 11px !important;
+  color: #64748b;
+  margin-bottom: 4px !important;
 }
 
-.upload-file-name {
-  font-size: 11px; /* Smaller font size */
-  color: #777;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.tracker-stat-value {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #1e293b;
+  font-family: monospace !important;
 }
 
-/* Status Footer */
-.status-footer {
-  margin-top: 6px;
-  font-size: 11px; /* Smaller font size */
-  color: #333;
-  border-top: 1px solid #eee;
-  padding-top: 6px; /* Reduced padding */
-  flex-shrink: 0;
+.tracker-video-wrapper {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background-color: #000000 !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+  position: relative !important;
+  width: 100% !important;
+  padding-top: 56.25% !important;
 }
 
-.status-footer p {
-  margin: 3px 0; /* Reduced margin */
+.tracker-video-player {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
-/* Media query for larger screens to arrange controls side-by-side */
-@media (min-width: 900px) { /* Adjust breakpoint as needed */
-  .controls-wrapper {
-    flex-direction: row; /* Arrange video and controls side-by-side */
-    gap: 12px; /* Space between video and control sections */
-    padding: 10px; /* Slightly more padding for the wrapper */
-  }
-
-  .controls-wrapper > div:first-child { /* Targets the header/video container */
-    flex: 1; /* Allows video section to take available space */
-    display: flex;
-    flex-direction: column;
-  }
-
-  .controls-wrapper > div:last-child { /* Targets the scroll area */
-    flex: 1.2; /* Allows scroll area to take more space */
-    padding-left: 0; /* No need for padding-right in scroll area if it's main content */
-    overflow-y: auto;
-  }
-
-  .video-player {
-    height: 100%; /* Make video fill available height */
-  }
-
-  .controls-header {
-    margin-bottom: 10px;
-  }
-}
-/* Ensure consistent box-sizing */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+.tracker-video-filename {
+  font-size: 11px !important;
+  text-align: center !important;
+  color: #64748b;
 }
 
-/* Main container */
-.control-panel-container {
-  height: 100vh;
-  display: flex;
-  padding: 20px;
-  gap: 20px;
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-  font-size: 14px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  position: relative;
-  overflow: hidden;
+/* =========================================================
+   DARK MODE OVERRIDES
+   ========================================================= */
+body.dark-mode .responsive-tracker-container,
+body.dark-mode .video-tracker-container {
+  background-color: #161622 !important;
+  color: #f3f4f6 !important;
 }
 
-.control-panel-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(88, 86, 214, 0.3) 0%, transparent 50%);
-  pointer-events: none;
-  animation: gradientShift 15s ease infinite;
+body.dark-mode .left-panel-class {
+  border-right-color: #2a2a3e !important;
 }
 
-@keyframes gradientShift {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.8; }
+body.dark-mode .tracker-icon-btn {
+  background-color: #1e1e2d !important;
+  border-color: #2a2a3e !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .tracker-command-deck {
+  background-color: #1e1e2d !important;
+  border-top-color: #2a2a3e !important;
+}
+
+body.dark-mode .tracker-card {
+  background-color: #252538 !important;
+  border-color: #363650 !important;
+}
+
+body.dark-mode .tracker-card-header {
+  color: #9ca3af !important;
+  border-bottom-color: #363650 !important;
+}
+
+body.dark-mode .tracker-input-group,
+body.dark-mode .tracker-upload-row {
+  color: #f3f4f6 !important;
+  background-color: #1e1e2d !important;
+  border-color: #363650 !important;
+}
+
+body.dark-mode .tracker-input {
+  background-color: #161622 !important;
+  border-color: #363650 !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .tracker-plus-btn {
+  background-color: #252538 !important;
+  border-color: #363650 !important;
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .right-panel-class {
+  background-color: #1e1e2d !important;
+  border-left-color: #2a2a3e !important;
+}
+
+body.dark-mode .tracker-stats-header {
+  color: #60a5fa !important;
+}
+
+body.dark-mode .tracker-stat-card {
+  background-color: #252538 !important;
+  border-color: #363650 !important;
+}
+
+body.dark-mode .tracker-stat-label {
+  color: #9ca3af !important;
+}
+
+body.dark-mode .tracker-stat-value {
+  color: #60a5fa !important;
+}
+
+body.dark-mode .tracker-video-filename {
+  color: #9ca3af !important;
+}
+
+body.dark-mode .tracker-btn-dark {
+  background-color: #252538 !important;
+  color: #f3f4f6 !important;
+  border: 1px solid #363650 !important;
 }

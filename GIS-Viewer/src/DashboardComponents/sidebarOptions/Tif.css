@@ -174,3 +174,52 @@
   color: #555;
   line-height: 1.4;
 }
+
+/* =========================================================
+   DARK MODE STYLING FOR TIF VIEWER
+   ========================================================= */
+body.dark-mode .map-ui-container .sidebar {
+  background-color: #1e1e2d !important;
+  border-right: 1px solid #2a2a3e !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dark-mode .upload-header h3 {
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .upload-description {
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .upload-description strong {
+  color: #60a5fa !important;
+}
+
+body.dark-mode .file-name {
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .upload-instructions,
+body.dark-mode .recommendation-section p {
+  color: #9ca3af !important;
+}
+
+body.dark-mode .selected-file {
+  background-color: #252538 !important;
+  border: 1px solid #363650 !important;
+}
+
+body.dark-mode .upload-area {
+  border-color: #3b82f6 !important;
+  background-color: rgba(59, 130, 246, 0.08) !important;
+}
+
+body.dark-mode .upload-label {
+  color: #60a5fa !important;
+}
+
+body.dark-mode .recommendation-tag {
+  background-color: #252538 !important;
+  color: #60a5fa !important;
+}

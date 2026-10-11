@@ -48,82 +48,7 @@ const currentLocationIcon = new L.DivIcon({
 // 2. STYLES (Responsive & Optimized)
 // ============================================================================
 
-const colors = {
-    bg: "#f1f5f9",
-    panelBg: "#ffffff",
-    border: "#e2e8f0",
-    textMain: "#1e293b",
-    textSub: "#64748b",
-    primary: "#2563eb",
-    success: "#10b981",
-    danger: "#ef4444",
-};
-
-const styles = {
-  container: {
-    height: "100vh",
-    width: "100%", // Flexible width
-    display: "flex",
-    backgroundColor: colors.bg,
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    overflow: "hidden",
-    color: colors.textMain,
-  },
-  leftPanel: {
-    width: "70%",
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    position: "relative",
-    borderRight: `1px solid ${colors.border}`,
-    transition: "width 0.3s ease", 
-  },
-  mapWrapper: {
-    flex: 1, 
-    position: "relative",
-    zIndex: 0,
-  },
-  commandDeck: {
-    height: "240px", 
-    backgroundColor: colors.panelBg,
-    borderTop: `1px solid ${colors.border}`,
-    padding: "16px",
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr 1fr",
-    gap: "16px",
-    boxShadow: "0 -4px 20px rgba(0,0,0,0.03)",
-    zIndex: 10,
-    overflowY: "auto",
-  },
-  rightPanel: {
-    width: "30%",
-    height: "100%",
-    backgroundColor: colors.panelBg,
-    display: "flex",
-    flexDirection: "column",
-    padding: "20px",
-    gap: "20px",
-    boxShadow: "-4px 0 20px rgba(0,0,0,0.03)",
-    overflowY: "auto",
-    transition: "width 0.3s ease",
-  },
-  // UI Elements
-  card: { backgroundColor: "#f8fafc", borderRadius: "10px", padding: "12px", border: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", gap: "8px" },
-  cardHeader: { fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.05em", color: colors.textSub, marginBottom: "4px", borderBottom: `1px solid ${colors.border}`, paddingBottom: "6px" },
-  inputGroup: { display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" },
-  input: { width: "100%", padding: "6px 10px", borderRadius: "6px", border: `1px solid ${colors.border}`, fontSize: "13px", outline: "none", transition: "border-color 0.2s", backgroundColor: "#fff" },
-  btn: { width: "100%", padding: "8px 12px", borderRadius: "6px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: "600", color: "white", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" },
-  uploadRow: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px", padding: "6px", backgroundColor: "#fff", borderRadius: "4px", border: `1px solid ${colors.border}` },
-  statusDot: (active) => ({ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: active ? colors.success : "#cbd5e1" }),
-  statGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" },
-  statCard: { backgroundColor: "#fff", border: `1px solid ${colors.border}`, borderRadius: "10px", padding: "12px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" },
-  statLabel: { fontSize: "11px", color: colors.textSub, marginBottom: "4px" },
-  statValue: { fontSize: "15px", fontWeight: "700", color: colors.textMain, fontFamily: "monospace" },
-  videoWrapper: { borderRadius: "12px", overflow: "hidden", backgroundColor: "#000", boxShadow: "0 4px 15px rgba(0,0,0,0.15)", position: "relative", width: "100%", paddingTop: "56.25%" },
-  videoPlayer: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%" },
-  floatingControls: { position: "absolute", top: "20px", left: "20px", zIndex: 1000, display: "flex", flexDirection: "column", gap: "8px" },
-  iconBtn: { width: "36px", height: "36px", borderRadius: "8px", backgroundColor: "white", border: `1px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 6px rgba(0,0,0,0.05)", color: colors.textMain }
-};
+// Styles handled dynamically via VideoTracker.css for Light/Dark modes
 
 // ============================================================================
 // 3. UTILITIES (Optimized)
@@ -538,7 +463,7 @@ const MapSyncRunner = ({ videoRef, trackPoints, timeOffset, autoFollow, fps, cur
 
 // ---------- MAIN COMPONENT ----------
 
-const ControlPanelWithKMZ = () => {
+const ControlPanelWithKMZ = ({ darkMode }) => {
   const [fps, setFps] = useState(DEFAULT_FPS);
   const [timeOffset, setTimeOffset] = useState(0);
   const [autoFollow, setAutoFollow] = useState(true);
@@ -559,29 +484,233 @@ const ControlPanelWithKMZ = () => {
   const fileRefs = useRef({});
   const rafId = useRef(null);
 
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof darkMode === "boolean") return darkMode;
+    return document.body.classList.contains("dark-mode");
+  });
+
+  useEffect(() => {
+    if (typeof darkMode === "boolean") {
+      setIsDarkMode(darkMode);
+      return;
+    }
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.body.classList.contains("dark-mode"));
+    });
+    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, [darkMode]);
+
   // UI Sync Logic (Text Stats only - Map handles its own movement via props)
   const updateUIText = useCallback((time, points) => {
-    if(isDraggingRef.current) return;
+    if (isDraggingRef.current) return;
     const tAdj = time + Number(timeOffset);
     const pos = interpPosition(tAdj, points);
     if (pos) setCurrentMapPos([pos.lat, pos.lng, tAdj]);
-    else setCurrentMapPos(prev => [prev[0], prev[1], tAdj]);
+    else setCurrentMapPos((prev) => (prev ? [prev[0], prev[1], tAdj] : [0, 0, tAdj]));
   }, [timeOffset]);
 
   const loopRAF = useCallback(() => {
-    if(videoRef.current) updateUIText(videoRef.current.currentTime || 0, trackPoints);
+    if (videoRef.current) updateUIText(videoRef.current.currentTime || 0, trackPoints);
     rafId.current = requestAnimationFrame(loopRAF);
   }, [updateUIText, trackPoints]);
 
   useEffect(() => {
     const videoEl = videoRef.current;
     if (!videoEl) return;
-    const startRAF = () => { if(rafId.current === null) rafId.current = requestAnimationFrame(loopRAF); };
-    const stopRAF = () => { if(rafId.current !== null) { cancelAnimationFrame(rafId.current); rafId.current = null; } };
-    videoEl.addEventListener('play', startRAF);
-    videoEl.addEventListener('pause', stopRAF);
-    return () => { stopRAF(); videoEl.removeEventListener('play', startRAF); videoEl.removeEventListener('pause', stopRAF); };
+    const startRAF = () => { if (rafId.current === null) rafId.current = requestAnimationFrame(loopRAF); };
+    const stopRAF = () => { if (rafId.current !== null) { cancelAnimationFrame(rafId.current); rafId.current = null; } };
+    videoEl.addEventListener("play", startRAF);
+    videoEl.addEventListener("pause", stopRAF);
+    return () => {
+      stopRAF();
+      videoEl.removeEventListener("play", startRAF);
+      videoEl.removeEventListener("pause", stopRAF);
+    };
   }, [loopRAF]);
+
+  const themeColors = useMemo(() => isDarkMode ? {
+    bg: "#161622",
+    panelBg: "#1e1e2d",
+    cardBg: "#252538",
+    inputBg: "#161622",
+    border: "#2a2a3e",
+    borderLight: "#363650",
+    textMain: "#f3f4f6",
+    textSub: "#9ca3af",
+    primary: "#3b82f6",
+    primaryHover: "#2563eb",
+    secondaryBtn: "#334155",
+    success: "#10b981",
+    danger: "#ef4444",
+  } : {
+    bg: "#f1f5f9",
+    panelBg: "#ffffff",
+    cardBg: "#f8fafc",
+    inputBg: "#ffffff",
+    border: "#e2e8f0",
+    borderLight: "#cbd5e1",
+    textMain: "#1e293b",
+    textSub: "#64748b",
+    primary: "#2563eb",
+    primaryHover: "#1d4ed8",
+    secondaryBtn: "#64748b",
+    success: "#10b981",
+    danger: "#ef4444",
+  }, [isDarkMode]);
+
+  const styles = useMemo(() => ({
+    container: {
+      height: "calc(100vh - 64px)",
+      width: "100%",
+      display: "flex",
+      backgroundColor: themeColors.bg,
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      overflow: "hidden",
+      color: themeColors.textMain,
+    },
+    leftPanel: {
+      width: "70%",
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+      position: "relative",
+      borderRight: `1px solid ${themeColors.border}`,
+      transition: "width 0.3s ease",
+    },
+    mapWrapper: {
+      flex: 1,
+      position: "relative",
+      zIndex: 0,
+      minHeight: 0,
+    },
+    commandDeck: {
+      height: "240px",
+      backgroundColor: themeColors.panelBg,
+      borderTop: `1px solid ${themeColors.border}`,
+      padding: "16px",
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr 1fr",
+      gap: "16px",
+      boxShadow: isDarkMode ? "0 -4px 20px rgba(0,0,0,0.3)" : "0 -4px 20px rgba(0,0,0,0.03)",
+      zIndex: 10,
+      overflowY: "auto",
+    },
+    rightPanel: {
+      width: "30%",
+      height: "100%",
+      backgroundColor: themeColors.panelBg,
+      display: "flex",
+      flexDirection: "column",
+      padding: "20px",
+      gap: "16px",
+      boxShadow: isDarkMode ? "-4px 0 20px rgba(0,0,0,0.3)" : "-4px 0 20px rgba(0,0,0,0.03)",
+      overflowY: "auto",
+      transition: "width 0.3s ease",
+    },
+    card: {
+      backgroundColor: themeColors.cardBg,
+      borderRadius: "10px",
+      padding: "12px",
+      border: `1px solid ${themeColors.border}`,
+      display: "flex",
+      flexDirection: "column",
+      gap: "8px",
+      boxShadow: isDarkMode ? "0 2px 8px rgba(0,0,0,0.2)" : "0 2px 4px rgba(0,0,0,0.02)",
+    },
+    cardHeader: {
+      fontSize: "11px",
+      fontWeight: "700",
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      color: themeColors.textSub,
+      marginBottom: "4px",
+      borderBottom: `1px solid ${themeColors.border}`,
+      paddingBottom: "6px",
+    },
+    inputGroup: { display: "flex", alignItems: "center", gap: "8px", fontSize: "13px" },
+    input: {
+      width: "100%",
+      padding: "6px 10px",
+      borderRadius: "6px",
+      border: `1px solid ${themeColors.border}`,
+      fontSize: "13px",
+      outline: "none",
+      transition: "border-color 0.2s",
+      backgroundColor: themeColors.inputBg,
+      color: themeColors.textMain,
+    },
+    btn: {
+      width: "100%",
+      padding: "8px 12px",
+      borderRadius: "6px",
+      border: "none",
+      cursor: "pointer",
+      fontSize: "13px",
+      fontWeight: "600",
+      color: "white",
+      transition: "all 0.2s",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "6px",
+    },
+    uploadRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      fontSize: "12px",
+      padding: "6px 8px",
+      backgroundColor: themeColors.inputBg,
+      borderRadius: "4px",
+      border: `1px solid ${themeColors.border}`,
+      color: themeColors.textMain,
+    },
+    statusDot: (active) => ({
+      width: "8px",
+      height: "8px",
+      borderRadius: "50%",
+      backgroundColor: active ? themeColors.success : (isDarkMode ? "#4b5563" : "#cbd5e1"),
+    }),
+    statGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" },
+    statCard: {
+      backgroundColor: themeColors.cardBg,
+      border: `1px solid ${themeColors.border}`,
+      borderRadius: "10px",
+      padding: "12px",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      boxShadow: isDarkMode ? "0 2px 8px rgba(0,0,0,0.2)" : "0 2px 4px rgba(0,0,0,0.02)",
+    },
+    statLabel: { fontSize: "11px", color: themeColors.textSub, marginBottom: "4px" },
+    statValue: { fontSize: "15px", fontWeight: "700", color: isDarkMode ? "#60a5fa" : themeColors.textMain, fontFamily: "monospace" },
+    videoWrapper: {
+      borderRadius: "12px",
+      overflow: "hidden",
+      backgroundColor: "#000",
+      boxShadow: isDarkMode ? "0 4px 15px rgba(0,0,0,0.4)" : "0 4px 15px rgba(0,0,0,0.15)",
+      position: "relative",
+      width: "100%",
+      paddingTop: "56.25%",
+    },
+    videoPlayer: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%" },
+    floatingControls: { position: "absolute", top: "20px", left: "20px", zIndex: 1000, display: "flex", flexDirection: "column", gap: "8px" },
+    iconBtn: {
+      width: "36px",
+      height: "36px",
+      borderRadius: "8px",
+      backgroundColor: isDarkMode ? "#1e1e2d" : "white",
+      border: `1px solid ${themeColors.border}`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      cursor: "pointer",
+      boxShadow: isDarkMode ? "0 4px 12px rgba(0,0,0,0.3)" : "0 4px 6px rgba(0,0,0,0.05)",
+      color: themeColors.textMain,
+    },
+  }), [themeColors, isDarkMode]);
 
   // Handlers
   const onUploadChange = (e, label, setter) => {
@@ -686,13 +815,13 @@ const ControlPanelWithKMZ = () => {
         @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; } }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        input:focus { border-color: ${colors.primary} !important; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        input:focus { border-color: ${themeColors.primary} !important; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
         .responsive-tracker-container { flex-direction: row; }
         .left-panel-class { width: 70%; height: 100%; }
         .right-panel-class { width: 30%; height: 100%; }
         @media (max-width: 1100px) {
             .responsive-tracker-container { flex-direction: column !important; overflow-y: auto !important; }
-            .left-panel-class { width: 100% !important; height: 60vh !important; min-height: 400px; border-right: none !important; border-bottom: 1px solid #e2e8f0; }
+            .left-panel-class { width: 100% !important; height: 60vh !important; min-height: 400px; border-right: none !important; border-bottom: 1px solid ${themeColors.border}; }
             .right-panel-class { width: 100% !important; height: auto !important; min-height: 40vh; }
         }
       `}</style>
@@ -726,21 +855,21 @@ const ControlPanelWithKMZ = () => {
              <div style={styles.card}>
                 <div style={styles.cardHeader}>Files</div>
                 <div style={{display:'flex', flexDirection:'column', gap:'4px'}}>
-                    <div style={styles.uploadRow}><span>Video</span><div style={{display:'flex', gap:'4px'}}><div style={styles.statusDot(!!videoFile)}></div><button onClick={()=>fileRefs.current.Video.click()} style={{cursor:'pointer',border:'1px solid #ddd',borderRadius:'3px'}}>+</button></div></div>
-                    <div style={styles.uploadRow}><span>SRT</span><div style={{display:'flex', gap:'4px'}}><div style={styles.statusDot(kmzLayer.isActive)}></div><button onClick={()=>fileRefs.current.KMZ.click()} style={{cursor:'pointer',border:'1px solid #ddd',borderRadius:'3px'}}>+</button></div></div>
-                    <div style={styles.uploadRow}><span>CSV</span><div style={{display:'flex', gap:'4px'}}><div style={styles.statusDot(trackPoints.length>0)}></div><button onClick={()=>fileRefs.current.CSV.click()} style={{cursor:'pointer',border:'1px solid #ddd',borderRadius:'3px'}}>+</button></div></div>
-                    <div style={styles.uploadRow}><span>KMZ</span><div style={{display:'flex', gap:'4px'}}><div style={styles.statusDot(kmzLayer.isActive)}></div><button onClick={()=>fileRefs.current.KMZ.click()} style={{cursor:'pointer',border:'1px solid #ddd',borderRadius:'3px'}}>+</button></div></div>
+                    <div style={styles.uploadRow}><span>Video</span><div style={{display:'flex', gap:'4px'}}><div style={styles.statusDot(!!videoFile)}></div><button onClick={()=>fileRefs.current.Video.click()} style={{cursor:'pointer',border:`1px solid ${themeColors.border}`,backgroundColor:styles.card.backgroundColor,color:themeColors.textMain,borderRadius:'3px'}}>+</button></div></div>
+                    <div style={styles.uploadRow}><span>SRT</span><div style={{display:'flex', gap:'4px'}}><div style={styles.statusDot(kmzLayer.isActive)}></div><button onClick={()=>fileRefs.current.KMZ.click()} style={{cursor:'pointer',border:`1px solid ${themeColors.border}`,backgroundColor:styles.card.backgroundColor,color:themeColors.textMain,borderRadius:'3px'}}>+</button></div></div>
+                    <div style={styles.uploadRow}><span>CSV</span><div style={{display:'flex', gap:'4px'}}><div style={styles.statusDot(trackPoints.length>0)}></div><button onClick={()=>fileRefs.current.CSV.click()} style={{cursor:'pointer',border:`1px solid ${themeColors.border}`,backgroundColor:styles.card.backgroundColor,color:themeColors.textMain,borderRadius:'3px'}}>+</button></div></div>
+                    <div style={styles.uploadRow}><span>KMZ</span><div style={{display:'flex', gap:'4px'}}><div style={styles.statusDot(kmzLayer.isActive)}></div><button onClick={()=>fileRefs.current.KMZ.click()} style={{cursor:'pointer',border:`1px solid ${themeColors.border}`,backgroundColor:styles.card.backgroundColor,color:themeColors.textMain,borderRadius:'3px'}}>+</button></div></div>
                 </div>
                 <input type="file" hidden ref={el=>fileRefs.current.Video=el} accept="video/*" onChange={e=>onUploadChange(e,'Video',setVideoFile)} />
                 <input type="file" hidden ref={el=>fileRefs.current.SRT=el} accept=".srt" onChange={e=>onUploadChange(e,'SRT',setSrtFile)} />
-          <input type="file" hidden ref={el=>fileRefs.current.CSV=el} accept=".csv" onChange={e=>onUploadChange(e,'CSV')} />
+                <input type="file" hidden ref={el=>fileRefs.current.CSV=el} accept=".csv" onChange={e=>onUploadChange(e,'CSV')} />
                 <input type="file" hidden ref={el=>fileRefs.current.KMZ=el} accept=".kmz,.kml" onChange={e=>onUploadChange(e,'KMZ',handleKMZFile)} />
              </div>
              <div style={styles.card}>
                 <div style={styles.cardHeader}>Process</div>
                 <div style={styles.inputGroup}><input type="number" placeholder="Dedup" style={styles.input} value={deduplicate} onChange={e=>setDeduplicate(e.target.value)} /></div>
                 <div style={styles.inputGroup}><input type="number" placeholder="Smooth" style={styles.input} value={smoothWindow} onChange={e=>setSmoothWindow(e.target.value)} /></div>
-                <button style={{...styles.btn, backgroundColor: colors.primary}} onClick={handleCreateCsv}><IconPlay/> Run</button>
+                <button style={{...styles.btn, backgroundColor: themeColors.primary}} onClick={handleCreateCsv}><IconPlay/> Run</button>
              </div>
              <div style={styles.card}>
                 <div style={styles.cardHeader}>Export</div>
@@ -752,7 +881,7 @@ const ControlPanelWithKMZ = () => {
       </div>
 
       <div style={styles.rightPanel} className="right-panel-class">
-         <h3 style={{margin:0, fontSize:'14px', color: colors.primary, display:'flex', alignItems:'center', gap:'8px'}}>Stats</h3>
+         <h3 style={{margin:0, fontSize:'14px', color: themeColors.primary, display:'flex', alignItems:'center', gap:'8px'}}>Stats</h3>
          <div style={styles.statGrid}>
             <div style={styles.statCard}><span style={styles.statLabel}>LAT</span><span style={styles.statValue}>{currentMapPos[0].toFixed(5)}</span></div>
             <div style={styles.statCard}><span style={styles.statLabel}>LNG</span><span style={styles.statValue}>{currentMapPos[1].toFixed(5)}</span></div>
@@ -762,8 +891,8 @@ const ControlPanelWithKMZ = () => {
          <div style={styles.videoWrapper}>
             <video ref={videoRef} controls preload="auto" src={videoFile ? URL.createObjectURL(videoFile) : ""} style={styles.videoPlayer} />
          </div>
-         <div style={{fontSize:'11px', textAlign:'center', color: colors.textSub}}>{videoFile ? videoFile.name : "No Video"}</div>
-         <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${currentMapPos[0]},${currentMapPos[1]}`, "_blank")} style={{...styles.btn, backgroundColor: colors.textMain}}>Open Google Maps</button>
+         <div style={{fontSize:'11px', textAlign:'center', color: themeColors.textSub}}>{videoFile ? videoFile.name : "No Video"}</div>
+         <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${currentMapPos[0]},${currentMapPos[1]}`, "_blank")} style={{...styles.btn, backgroundColor: isDarkMode ? '#2563eb' : themeColors.textMain}}>Open Google Maps</button>
       </div>
     </div>
   );

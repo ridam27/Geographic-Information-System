@@ -50,7 +50,7 @@ const LazyFallback = () => (
 );
 
 
-const Dashboard = () => {
+const Dashboard = ({ darkMode }) => {
   const [isSidebarOpen, setSidebarOpen] = usePersistentState("dashboard-sidebar-open", false);
   const [selectedOption, setSelectedOption] = usePersistentState("dashboard-selected-option", "");
   const theme = useTheme();

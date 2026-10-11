@@ -1,64 +1,470 @@
 /* General reset and body styling */
 body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background-color: #f8f9fa;
+  margin: 0;
+  font-family: 'Roboto', 'Inter', Arial, sans-serif;
+  background-color: #f8f9fa;
+}
+
+/* Map container and input section styling */
+.map-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.input-container {
+  position: absolute;
+  top: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.94);
+  padding: 10px 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+}
+
+.input-container input {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  width: 150px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.input-container input:focus {
+  border-color: #2196f3;
+}
+
+.btn-go {
+  padding: 8px 16px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.btn-go:hover {
+  background-color: #1976d2;
+}
+
+.btn-reset {
+  padding: 8px 14px;
+  background-color: transparent !important;
+  color: #ef4444 !important;
+  border: 1.5px solid #ef4444 !important;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.btn-reset:hover {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+  color: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.btn-recenter {
+  padding: 8px 14px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.btn-recenter:hover {
+  background-color: #059669;
+}
+
+.zoom-indicator-tag {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #334155;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid #cbd5e1;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(6px);
+}
+
+.bottom-left-stats-card {
+  position: absolute;
+  bottom: 25px;
+  left: 20px;
+  z-index: 1000;
+  width: 260px;
+  background-color: rgba(255, 255, 255, 0.94);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(10px);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-card-header {
+  padding: 10px 14px;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.stats-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.live-indicator-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #10b981;
+  animation: blinkDot 1.5s infinite ease-in-out;
+}
+
+@keyframes blinkDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.stats-card-body {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.stats-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.stats-val {
+  color: #0f172a;
+  font-weight: 700;
+  font-family: 'Roboto Mono', monospace, sans-serif;
+}
+
+.stats-card-footer {
+  padding: 8px 14px 12px;
+}
+
+.stats-card-footer .btn-recenter {
+  width: 100%;
+  justify-content: center;
+}
+
+.bottom-right-controls {
+  position: absolute;
+  bottom: 25px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Right Edge Panel for Pinned Details */
+.right-details-panel {
+  position: absolute;
+  top: 90px;
+  right: 20px;
+  width: 280px;
+  z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(10px);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
   }
-  
-  /* Map container and input section styling */
-  .map-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative; /* Ensure inputs are placed relative to the container */
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
-  
-  .input-container {
-    position: absolute;
-    top:35px; /* Adjust this value to position the input area vertically */
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    z-index: 1000; /* Ensure it's on top of the map */
-    background-color: rgba(255, 255, 255, 0.8); /* Optional: gives some background to the input area */
-    padding: 10px;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.panel-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.panel-close-btn:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.panel-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.coord-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.coord-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.coord-value {
+  color: #0f172a;
+  font-weight: 700;
+  font-family: 'Roboto Mono', monospace, sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.btn-copy {
+  width: 100%;
+  padding: 9px;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: background-color 0.2s ease;
+}
+
+.btn-copy:hover {
+  background-color: #1d4ed8;
+}
+
+.btn-use-input {
+  width: 100%;
+  padding: 8px;
+  background-color: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.btn-use-input:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Red pin marker styling */
+.red-pin-marker {
+  background: transparent;
+  border: none;
+  filter: drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.45));
+  transition: transform 0.15s ease-out;
+}
+
+.red-pin-marker:hover {
+  transform: scale(1.15);
+}
+
+/* Live location pulsing dot styling */
+.live-location-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pulse-dot {
+  width: 14px;
+  height: 14px;
+  background-color: #2196f3;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(33, 150, 243, 0.8);
+  animation: pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
   }
-  
-  .input-container input {
-    padding: 8px;
-    margin: 5px;
-    border: 1px solid #ced4da;
-    border-radius: 5px;
-    width: 200px;
+  70% {
+    box-shadow: 0 0 0 14px rgba(33, 150, 243, 0);
   }
-  
-  .input-container button {
-    padding: 8px 16px;
-    background-color: #2292ed;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+  100% {
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
   }
-  
-  .input-container button:hover {
-    background-color: #2196f9;
-  }
-  
-  /* Map styling */
-  .map-wrapper {
-    width: 100%;
-    height: calc(100vh - 64px); /* Adjust height to avoid header overlap */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .leaflet-container {
-    width: 100%;
-    height: 100%;
-  }
+}
+
+/* Map styling */
+.map-wrapper {
+  width: 100%;
+  height: calc(100vh - 64px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Dark mode support for Right Details Panel & Zoom Tag */
+body.dark-mode .right-details-panel {
+  background-color: rgba(26, 26, 42, 0.95);
+  border-color: #333344;
+  color: #ffffff;
+}
+
+body.dark-mode .panel-header {
+  background-color: #1e1e2d;
+  border-bottom-color: #333344;
+}
+
+body.dark-mode .panel-header h3 {
+  color: #ffffff;
+}
+
+body.dark-mode .panel-close-btn {
+  color: #94a3b8;
+}
+
+body.dark-mode .panel-close-btn:hover {
+  background-color: #2d2d3f;
+  color: #ffffff;
+}
+
+body.dark-mode .coord-label {
+  color: #94a3b8;
+}
+
+body.dark-mode .coord-value {
+  color: #90caf9;
+}
+
+body.dark-mode .zoom-indicator-tag {
+  background-color: #2a2a3a;
+  color: #90caf9;
+  border-color: #444455;
+}
+
+body.dark-mode .btn-use-input {
+  background-color: #2a2a3a;
+  color: #e0e0e0;
+  border-color: #444455;
+}
+
+body.dark-mode .btn-use-input:hover {
+  background-color: #33334d;
+  color: #ffffff;
+}
+
+body.dark-mode .bottom-left-stats-card {
+  background-color: rgba(26, 26, 42, 0.95);
+  border-color: #333344;
+  color: #ffffff;
+}
+
+body.dark-mode .stats-card-header {
+  background-color: #1e1e2d;
+  border-bottom-color: #333344;
+}
+
+body.dark-mode .stats-card-title {
+  color: #ffffff;
+}
+
+body.dark-mode .stats-label {
+  color: #94a3b8;
+}
+
+body.dark-mode .stats-val {
+  color: #90caf9;
+}
+
+body.dark-mode .btn-reset {
+  background-color: transparent;
+  color: #f87171;
+  border: 1px solid #f87171;
+}
+
+body.dark-mode .btn-reset:hover {
+  background-color: rgba(248, 113, 113, 0.15);
+  color: #fca5a5;
+  border-color: #fca5a5;
+}
   

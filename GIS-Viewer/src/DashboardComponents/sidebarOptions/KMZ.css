@@ -212,3 +212,49 @@
     transform: rotate(360deg);
   }
 }
+
+/* =========================================================
+   DARK MODE STYLING FOR KMZ VIEWER
+   ========================================================= */
+body.dark-mode .sidebar {
+  background-color: #1e1e2d !important;
+  border-right: 1px solid #2a2a3e !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dark-mode .sectionHeader,
+body.dark-mode .logoContainer {
+  color: #f3f4f6 !important;
+  border-bottom-color: #2a2a3e !important;
+}
+
+body.dark-mode .layerItem {
+  background-color: #252538 !important;
+  color: #f3f4f6 !important;
+  border: 1px solid #363650 !important;
+}
+
+body.dark-mode .layerItemActive {
+  background-color: #1e3a5f !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .layerTitle {
+  color: #f3f4f6 !important;
+}
+
+body.dark-mode .uploadButton {
+  background-color: #252538 !important;
+  border-color: #363650 !important;
+  color: #60a5fa !important;
+}
+
+body.dark-mode .uploadButtonHover {
+  background-color: #363650 !important;
+}
+
+body.dark-mode .badge {
+  background-color: #1e3a5f !important;
+  color: #60a5fa !important;
+}
